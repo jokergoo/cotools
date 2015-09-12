@@ -148,3 +148,19 @@ top_largest_objects = function() {
 	print(head(sort(s, decreasing = TRUE)))
 }
 
+
+set_proper_seqlengths = function(gr, species) {
+	
+	chr_len_df = getChromInfoFromUCSC(species)
+	
+	chr = as.character(chr_len_df[[1]])
+	chr_len = chr_len_df[[2]]
+	names(chr_len) = chr
+	
+	slev = seqlevels(gr)
+	slev = chr[chr %in% slev]
+	seqlevels(gr) = slev
+	slen = chr_len[slev]
+	seqlengths(gr) = slen
+	return(gr)
+}

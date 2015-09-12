@@ -13,12 +13,13 @@ cp = setRefClass("coProject",
 		RNASEQ = "ANY",
 		genomic_features = "ANY",
 		CHIPSEQ = "ANY",
-		get_hm = "ANY"
+		get_hm = "ANY",
+		output = "list"
 	)
 )
 
 initialize_project = function(sample_id, chromosome, species,
-	type, col,
+	type, col, output,
 	chipseq, 
 	txdb, 
 	methylation_hooks, expr,
@@ -151,10 +152,28 @@ initialize_project = function(sample_id, chromosome, species,
 		cp$get_hm = get_hm
 	}
 
+	## initialize output folder structure
+	dir.create(dir, showWarnings = FALSE, recursive = TRUE)
+	dir.create(qq("@{dir}/rds/"), showWarnings = FALSE, recursive = TRUE)
+	dir.create(qq("@{dir}/image/"), showWarnings = FALSE, recursive = TRUE)
+	dir.create(qq("@{dir}/temp/"), showWarnings = FALSE, recursive = TRUE)
+	dir.create(qq("@{dir}/table/"), showWarnings = FALSE, recursive = TRUE)
+
+	if(!missing(output)) {
+		cp$output = list(base = dir,
+			             rds = qq("@{dir}/rds/"),
+			             image = qq("@{dir}/image/"),
+			             temp = qq("@{dir}/temp/"),
+			             table = qq("@{dir}/table/"))
+	}
+
 	return(cp)
 }
 
-cp$methods(show = function() {
+cp$methods(
+
+
+show = function() {
 		qqcat(
 "Summary of the coProject:
 | samples: @{length(.self$sample_id)}
@@ -187,9 +206,13 @@ cp$methods(show = function() {
 				qqcat("|   @{gf[i]}: @{length(.self$genomic_features[[i]])}\n")
 			}
 		}
+	if(length(.self$output) > 0) {
+		qqcat("| output: @{.self$output$base}\n")
+	}
 
 	qqcat("\nYou can save this object to get rid of spending a lot of time to re-create it.\n\n")
 },
+
 correlated_regions = function(sample_id, chr, ...) {
 
 	l = rep(TRUE, length(.self$sample_id))
@@ -219,8 +242,170 @@ correlated_regions = function(sample_id, chr, ...) {
 	
 },
 
+filter_correlated_regions = function(template, chromosome = .self$chromosome, ...) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$filter_correlated_regions(chromosome = chromosome, template = template, ...)
+},
+
+reduce_cr = function(cr, ...) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$reduce_cr(cr = cr, expr = .self$expr, txdb = .self$txdb, ...)
+},
+
+cr_qc = function(template, chromosome = .self$chromosome) {
+	
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$cr_qc(chromosome = chromosome, template = template)	
+},
+
+cr_correlated_to_genomic_features = function(cr) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$cr_correlated_to_genomic_features(cr, gf_list = .self$genomic_features, species = .self$species)
+},
+
+cr_hilbert = function(cr, template, chromosome = .self$chromosome) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$cr_hilbert(cr, template, txdb = .self$txdb, chromosome = chromosome)
+},
+
+compare_meth = function(chr, start, end, x = NULL, x2 = NULL) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$compare_meth(chr, start, end, x, x2)
+},
+
+cr_gviz = function(cr, gi, gf_list = NULL, ...) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$cr_gviz(cr, gi, expr = .self$expr, txdb = .self$txdb, 
+		species = .self$species, gf_list = .self$genomic_features[gf_list])
+},
+
+cr_scatterplot_me = function(cr, gi = NULL, ...) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$cr_scatterplot_me(cr, expr = .self$expr, 
+		gi = gi, annotation_color = .self$col)
+},
+
+cr_enriched_at_tss = function(cr) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$cr_enriched_at_tss(cr, .self$txdb)
+},
+
+enriched_heatmap_list_on_gene = function(cr, cgi, hm_name = NULL, on = "tss", by = "gene", ...) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	if(is.null(.self$CHIPSEQ) || is.null(hm_name)) {
+		parent.env(parent.env(e))$enriched_heatmap_list_on_gene(cr, cgi, txdb = .self$txdb, expr = .self$expr, on = no, by = by, ...)
+	} else {
+		sid = .self$sample_id[.self$CHIPSEQ[[hm_name]]]
+		hm_list = lapply(sid, function(x) .self$get_hm(hm_name, x))
+		names(hm_list) = sid
+		parent.env(parent.env(e))$enriched_heatmap_list_on_gene(cr, cgi, txdb = .self$txdb, expr = .self$expr, hm_list = hm_list, hm_name = hm_name, on = no, by = by, ...)
+	}
+},
+
+enriched_heatmap_list_on_tss_cgi = function(cr, cgi, hm_name = NULL, by = "gene", ...) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	if(is.null(.self$CHIPSEQ) || is.null(hm_name)) {
+		parent.env(parent.env(e))$enriched_heatmap_list_on_tss_cgi(cr, cgi, txdb = .self$txdb, expr = .self$expr, by = by, ...)
+	} else {
+		sid = .self$sample_id[.self$CHIPSEQ[[hm_name]]]
+		hm_list = lapply(sid, function(x) .self$get_hm(hm_name, x))
+		names(hm_list) = sid
+		parent.env(parent.env(e))$enriched_heatmap_list_on_tss_cgi(cr, cgi, txdb = .self$txdb, expr = .self$expr, hm_list = hm_list, hm_name = hm_name, by = by, ...)
+	}
+},
+
+wgbs_qcplot = function(sample_id, chromosome = .self$chromosome) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$wgbs_qcplot(sample_id, chromosome)
+},
+
+plot_coverage_and_methylation_on_genome = function(sid, chromosome = .self$chromosome,	nw = 10000, ...) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$plot_coverage_and_methylation_on_genome(sid, chromosome, .self$species, nw, ...)
+
+},
+
+plot_multiple_samples_methylation_on_genome = function(sample_id, chromosome = .self$chromosome, nw = 1000, ...) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$plot_multiple_samples_methylation_on_genome(sample_id, annotation = .self$type, 
+		annotation_color = chromosome, species = .self$species, nw = nw, ...)
+
+},
+
+global_methylation_distribution = function(sample_id, chromosome = .self$chromosome, by_chr = FALSE) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$global_methylation_distribution(sample_id, annotation = .self$type, 
+		annotation_color = .self$col, chromosome = chromosome, by_chr = by_chr)
+
+},
+
+get_mean_methylation_in_genomic_features = function(sample_id, chromosome = .self$chromosome, gf_list = NULL) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$get_mean_methylation_in_genomic_features(sample_id, gf_list = .self$genomic_features[gf_list], 
+		chromosome = chromosome)
+
+},
+
+heatmap_diff_methylation_in_genomic_features = function(gr, ...) {
+
+	methylation_hooks = .self$methylation_hooks
+	e = environment()
+
+	parent.env(parent.env(e))$heatmap_diff_methylation_in_genomic_features(gr, annotation = .self$type, 
+		annotation_color = .self$col, txdb = .self$txdb, gf_list = .self$genomic_features, ...)
+
+},
+
 pipeline = function() {
 
 }
+
 )
 
