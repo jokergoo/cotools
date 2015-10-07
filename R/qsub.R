@@ -34,6 +34,9 @@ qsub = function(name, options, code, share = FALSE, private = NULL, dependency =
 	image_file = tempfile(tmpdir = tmpdir, fileext = ".RData")
 	wd = getwd()
 
+	loaded_library = gsub("package:", "", grep("package:", search(), vaule = TRUE))
+	assign(".loaded_library", loaded_library, envir = .GlobalEnv)
+
 	if(share) {
 		if(is.null(QSUBENV$image_file)) {
 			save.image(file = image_file)
@@ -59,6 +62,10 @@ code = paste(code, collapse = "\n")
 setwd('@{wd}')
 load('@{image_file}')
 
+for(nm in .loaded_library) {
+	library(nm,  character.only=TRUE)
+}
+
 @{code}
 ")	
 	} else {
@@ -66,6 +73,10 @@ Rscript = qq("
 setwd('@{wd}')
 load('@{image_file}')
 load('@{private_file}')
+
+for(nm in .loaded_library) {
+	library(nm,  character.only=TRUE)
+}
 
 @{code}
 

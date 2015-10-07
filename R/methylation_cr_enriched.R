@@ -286,24 +286,20 @@ enrich_with_histone_mark = function(target, hm_list, sample_id, factor, target_r
 	target_name = deparse(substitute(target))
 	# 200 is number of windows (5000 + 5000)/50
 
-	if(all(width(target) <= 1)) {
-		w = 200
-	} else {
-		w = ceiling(200/(1-target_ratio)*target_ratio)
-	}
-
-	arr = array(dim = c(length(target), w, length(hm_list)))
 	sample = names(hm_list)
 	for(i in seq_along(sample)) {
 		qqcat("@{sample[i]}: normalize histone modifications to @{target_name}.\n")
 	    tm = normalizeToMatrix(hm_list[[i]], target, value_column = "density", extend = 5000, mean_mode = "w0", w = 50, target_ratio = target_ratio)
+	    if(!exists("arr")) {
+	    	arr = array(dim = c(length(target), dim(tm)[2], length(hm_list)))
+	    }
 	    arr[, , i] = tm
 	}
 
 	########### matrix for each subgroup
 	hist_mat_list = list()
 	for(type in unique(factor)) {
-	    l = sample %in% sample_id[factor]
+	    l = sample %in% sample_id[factor == type]
 	    hist_mat_list[[type]] = apply(arr[, , l], c(1, 2), mean)
 	    hist_mat_list[[type]] = copyAttr(tm, hist_mat_list[[type]])
 	}

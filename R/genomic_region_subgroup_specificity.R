@@ -115,7 +115,6 @@ subgroup_specific_genomic_regions = function(gr, factors,
 	
 	for(i in seq_along(type)) {
 		message(qq("extracting pattern of '@{type[i]}'..."))
-		counter = set_counter(nrow(mat))
 		l = sapply(seq_len(nrow(mat)), function(k) {
 			x = mat[k, ]
 			for(j in seq_along(level)) {
@@ -138,11 +137,6 @@ subgroup_specific_genomic_regions = function(gr, factors,
 					return(FALSE)
 				}
 			}
-
-			if(k %% 10 == 0) {
-				message(qq("@{counter(k)} common regions for '@{type[i]}' scanned."))
-			}
-			
 			return(TRUE)
 		})
 		
