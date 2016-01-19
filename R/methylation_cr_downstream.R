@@ -8,8 +8,8 @@ cr_qc = function(chromosome = paste0("chr", c(1:22, "X")), template) {
 	n = rep(list(n), length(diameter))
 	w = n
 
-	for(i in seq_along(chromosome)) {
-	    chr = chromosome[i]
+	for(k in seq_along(chromosome)) {
+	    chr = chromosome[k]
 	    qqcat("reading @{chr}...\n")
 	    cr = readRDS(qq(template))
 	    
@@ -44,6 +44,23 @@ cr_qc = function(chromosome = paste0("chr", c(1:22, "X")), template) {
 		text(seq_along(w[[i]][, 1]), w[[i]][, 1]/w[[i]][, 2], qq("@{w[[i]][, 1]}\n@{w[[i]][, 2]}", collapse=FALSE), srt = 45, col = "red")
 	}
 
+	mat_n = matrix(nrow = length(diameter), ncol = length(cutoff))
+	rownames(mat_n) = diameter
+	colnames(mat_n) = cutoff
+	for(i in seq_along(n)) {
+		mat_n[i, ] = n[[i]][, 1]/n[[i]][,2 ]
+	}
+
+	mat_w = matrix(nrow = length(diameter), ncol = length(cutoff))
+	rownames(mat_w) = diameter
+	colnames(mat_w) = cutoff
+	for(i in seq_along(n)) {
+		mat_w[i, ] = w[[i]][, 1]/w[[i]][,2 ]
+	}
+
+	# Heatmap(mat_n, cluster_rows = FALSE, cluster_columns = FALSE, name = "#neg/#pos")
+	# Heatmap(mat_w, cluster_rows = FALSE, cluster_columns = FALSE, name = "w(neg)/w(pos)")
+
 	return(invisible(list(n = n, w = w)))
 }
 
@@ -76,72 +93,95 @@ cr_correlated_to_genomic_features = function(cr, gf_list, species = NULL) {
 	par(mar = c(8, 4, 4, 1))
 	mat = log2(t(pct_mat[, 2:3]/pct_mat[,1]))
 	colnames(mat) = NULL
-	pos = barplot(mat, beside = TRUE, ylim = range(mat)*1.1, axes = FALSE, ann = FALSE, col = c("darkgreen", "red"), 
-	    ylab = "fold change", main = "gf_in_cr% / gf_in_genome%")
+	pos = barplot(mat, beside = TRUE, ylim = range(mat)*1.1, axes = FALSE, ann = FALSE, col = c("green", "red"), 
+	    ylab = "fold change", main = expression(frac("width(intersect(gf, cr))", "width(cr)")/frac("width(intersect(gf, genome))", "width(genome)")))
 	axis(side = 2, at = seq(-3, 3), labels = c(0.125, 0.25, 0.5, 1, 2, 4, 8))
 	par(xpd = NA)
 	text(colMeans(pos), min(mat)*1.2, names(gf_list), srt = 90, adj = c(1, 0.5))
 	box()
-	legend("bottomleft", pch = 15, col = c("darkgreen", "red"), legend = c("neg_cr", "pos_cr"))
+	legend("bottomleft", pch = 15, col = c("green", "red"), legend = c("neg_cr", "pos_cr"))
 
 	par(mar = c(8, 4, 4, 1))
 	mat = t(overlap_mat[, 2:3])
 	colnames(mat) = NULL
-	pos = barplot(mat, beside = TRUE, ylim = range(mat)*1.1, ann = FALSE, col = c("darkgreen", "red"), 
-	    ylab = "bp", main = "base pairs of the intersection between gf and cr")
+	pos = barplot(mat, beside = TRUE, ylim = range(mat)*1.1, ann = FALSE, col = c("green", "red"), 
+	    ylab = "bp", main = "Intersection between gf and cr")
 	par(xpd = NA)
 	text(colMeans(pos), 0, names(gf_list), srt = 90, adj = c(1.2, 0.5))
 	box()
-	legend("topright", pch = 15, col = c("darkgreen", "red"), legend = c("neg_cr", "pos_cr"))
+	legend("topright", pch = 15, col = c("green", "red"), legend = c("neg_cr", "pos_cr"))
 
 	return(invisible(list(pct = pct_mat, overlap = overlap_mat)))
 }
 
 
-cr_hilbert = function(cr, template, txdb, chromosome = paste("chr", c(1:22, "X"))) {
+cr_hilbert = function(cr, template, txdb, chromosome = paste("chr", c(1:22, "X")), merge_chr = FALSE) {
 
 	gene = genes(txdb)
 	
 	chr_len = read.chromInfo()$chr.len
-	chromosome = paste0("chr", c(1:22, "X"))
 
 	if(missing(template)) {
-		pushViewport(viewport(layout = grid.layout(nr = 4, nc = 6)))
-		for(i in seq_along(chromosome)) {
-		    chr = chromosome[i]
-		    cat(chr, "\n")
-		    cr_subset = cr[seqnames(cr) == chr]
-		    gene_subset = gene[seqnames(gene) == chr]
-		    pushViewport(viewport(layout.pos.row = ceiling(i/6), layout.pos.col = i - (ceiling(i/6)-1)*6))
-		    hc = HilbertCurve(s = 1, e = max(chr_len), mode = "pixel", level = 10, title = chr, newpage = FALSE)
-		    hc_layer(hc, ranges(reduce(gene_subset)), col = "#F0F0FF")
-		    hc_layer(hc, ranges(cr_subset), col = ifelse(cr_subset$corr > 0, "red", "darkgreen"), mean_mode = "absolute")
-		    upViewport()
+		cm = ColorMapping(levels = c("neg", "pos"), colors = c("darkgreen", "red"))
+		lgd = color_mapping_legend(cm, title = "type", plot = FALSE)
+		cr = cr[!is.na(cr$corr)]
+		if(merge_chr) {
+			hc = GenomicHilbertCurve(chr = chromosome, mode = "pixel", level = 10, title = "CR for all chromosomes", legend = lgd)
+		    hc_layer(hc, gene, col = "#F0F0FF")
+		    hc_layer(hc, cr, col = ifelse(cr$corr > 0, "red", "darkgreen"), mean_mode = "absolute", grid_line = 3, grid_line_col = "grey")
+		    hc_map(hc, title = "map for all chromosomes")
+		} else {
+			pushViewport(viewport(layout = grid.layout(nr = 4, nc = 6)))
+			for(i in seq_along(chromosome)) {
+			    chr = chromosome[i]
+			    cat(chr, "\n")
+			    cr_subset = cr[seqnames(cr) == chr]
+			    gene_subset = gene[seqnames(gene) == chr]
+			    pushViewport(viewport(layout.pos.row = ceiling(i/6), layout.pos.col = i - (ceiling(i/6)-1)*6))
+			    hc = HilbertCurve(s = 1, e = max(chr_len), mode = "pixel", level = 10, title = chr, newpage = FALSE)
+			    hc_layer(hc, ranges(reduce(gene_subset)), col = "#F0F0FF")
+			    hc_layer(hc, ranges(cr_subset), col = ifelse(cr_subset$corr > 0, "red", "darkgreen"), mean_mode = "absolute")
+			    upViewport()
+			}
+			upViewport()
 		}
-		upViewport()
 	}
 
 	if(missing(cr)) {
 		## all cr windows
 		col_fun = colorRamp2(c(-1, 0, 1), c("green", "white", "red"))
-		pushViewport(viewport(layout = grid.layout(nr = 4, nc = 6)))
-		for(i in seq_along(chromosome)) {
-		    chr = chromosome[i]
-		    cat(chr, "\n")
-		    cr = readRDS(qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/correlated_region/@{chr}_cr.rds"))
-		    pushViewport(viewport(layout.pos.row = ceiling(i/6), layout.pos.col = i - (ceiling(i/6)-1)*6))
-		    hc = HilbertCurve(s = 1, e = max(chr_len), mode = "pixel", level = 10, title = chr, newpage = FALSE)
-		    hc_layer(hc, ranges(cr), col = col_fun(cr$corr), mean_mode = "absolute")
-		    upViewport()
+		if(merge_chr) {
+			cr = GRanges()
+			for(i in seq_along(chromosome)) {
+				cr = c(cr, readRDS(qq(template)))
+			}
+			cr = cr[!is.na(cr$corr)]
+			hc = GenomicHilbertCurve(chr = chromosome, mode = "pixel", level = 10)
+		    hc_layer(hc, cr, col = col_fun(cr$corr), mean_mode = "absolute", grid_line = 3, grid_line_col = "grey")
+		   	hc_map(hc, title = "map for all chromosomes")
+		} else {
+			pushViewport(viewport(layout = grid.layout(nr = 4, nc = 6)))
+			for(i in seq_along(chromosome)) {
+			    chr = chromosome[i]
+			    cat(chr, "\n")
+			    cr = readRDS(qq(template))
+			    cr = cr[!is.na(cr$corr)]
+			    pushViewport(viewport(layout.pos.row = ceiling(i/6), layout.pos.col = i - (ceiling(i/6)-1)*6))
+			    hc = HilbertCurve(s = 1, e = max(chr_len), mode = "pixel", level = 10, title = chr, newpage = FALSE)
+			    hc_layer(hc, ranges(cr), col = col_fun(cr$corr), mean_mode = "absolute")
+			    upViewport()
+			}
 		}
 	}
 }
 
-compare_meth = function(chr, start, end, x = NULL, x2 = NULL) {
+compare_meth = function(cr, chr, start, end, x = NULL, x2 = NULL) {
 	
-	sample_id = attr(res, "sample_id")
-	factor = attr(res, "factor")
-	col = attr(res, "col")
+	sample_id = attr(cr, "sample_id")
+	factor = attr(cr, "factor")
+	col = attr(cr, "col")
+	n_sample = length(sample_id)
+	if(is.null(col)) col = sample(n_sample, n_sample)
 	
 	methylation_hooks$set(chr)
 

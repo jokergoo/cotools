@@ -33,7 +33,7 @@ correlated_regions_per_gene = function(site, meth, cov, expr, chr, cov_cutoff = 
 		sapply(seq_len(ncol(meth_m)), function(i) {
 			xm = meth_m[, i]
 			ym = cov_m[, i]
-			mean(xm[ym >= cov_cutoff])
+			mean(xm[ym >= cov_cutoff], na.rm = TRUE)
 		})
 	})
 	m = do.call('rbind', m)
@@ -64,18 +64,25 @@ correlated_regions_per_gene = function(site, meth, cov, expr, chr, cov_cutoff = 
 			diameter(as.vector(tapply(x[l], factor[l], mean)))
 		})
 	}
+	if(nrow(m) == 1) {
+		meth_IQR = iqr(m)
+	} else {
+		meth_IQR = rowIQRs(m, na.rm = TRUE)
+	}
 	gr = GRanges(seqnames = rep(chr, length(ir)),
 		    ranges = ir)
 	if(is.null(factor)) {
 		df = DataFrame(n = window_size,
 		    m, # mean methylation
 		    corr = corr,
-		    corr_p = corr_p)	
+		    corr_p = corr_p,
+		    meth_IQR = meth_IQR)	
 	} else {
 		df = DataFrame(n = window_size,
 		    m, # mean methylation
 		    corr = corr,
 		    corr_p = corr_p,
+		    meth_IQR = meth_IQR,
 		    meth_anova = meth_anova,
 		    meth_diameter = meth_diameter)
 	}
@@ -104,7 +111,7 @@ correlated_regions_per_gene = function(site, meth, cov, expr, chr, cov_cutoff = 
 correlated_regions = function(sample_id, expr, txdb, chr, extend = 50000,
 	cov_filter = function(x) sum(x > 0) > length(x)/2,
 	cor_method = "spearman", factor = NULL, window_size = 5, max_width = 10000,
-	raw_meth = FALSE, cov_cutoff = 3, min_dp = 4) {
+	raw_meth = FALSE, cov_cutoff = 3, min_dp = 4, col = NULL) {
 
 	qqcat("extracting gene model (extend = @{extend}, chr = @{chr})...\n")
 	gene = genes(txdb)
@@ -235,7 +242,7 @@ correlated_regions = function(sample_id, expr, txdb, chr, extend = 50000,
 }
 
 filter_correlated_regions = function(chromosome = paste0("chr", c(1:22, "X")), template, 
-	cutoff = 0.05, adj_method = "BH", meth_diameter_cutoff = 0.25,
+	cutoff = 0.05, adj_method = "BH", meth_diameter_cutoff = 0.25, meth_IQR_cutoff = 0.25,
 	anova_cutoff = 0.05) {
 
 	if(length(cutoff) == 1) cutoff = rep(cutoff, 2)
@@ -244,6 +251,7 @@ filter_correlated_regions = function(chromosome = paste0("chr", c(1:22, "X")), t
 	corr_p = NULL
 	meth_anova = NULL
 	meth_diameter = NULL
+	meth_IQR = NULL
 	chr_name = NULL
 	corr = NULL
 	for(chr in chromosome) {
@@ -265,6 +273,10 @@ filter_correlated_regions = function(chromosome = paste0("chr", c(1:22, "X")), t
 	   	if(has_anova) {
 	   		meth_anova = c(meth_anova, cr$meth_anova)
 	   		meth_diameter = c(meth_diameter, cr$meth_diameter)
+	   	} else {
+	   		meth_mat = as.matrix(mcols(cr)[, grep("^mean_meth", colnames(mcols(cr)))])
+	   		meth_IQR = c(meth_IQR, rowIQRs(meth_mat, na.rm = TRUE))
+	   		# meth_IQR = c(meth_IQR, cr$meth_IQR)
 	   	}
 	    chr_name = c(chr_name, rep(chr, length(cr)))
 	}
@@ -278,8 +290,10 @@ filter_correlated_regions = function(chromosome = paste0("chr", c(1:22, "X")), t
 		l = l & ifelse(corr > 0, corr_fdr <= cutoff[1], corr_fdr <= cutoff[2])
 	} else {
 		corr_fdr = p.adjust(corr_p, method = adj_method)
-		l = ifelse(corr > 0, corr_fdr <= cutoff[1], corr_fdr <= cutoff[2])
+		l = ifelse(corr > 0, corr_fdr <= cutoff[1], corr_fdr <= cutoff[2]) & meth_IQR >= meth_IQR_cutoff & !is.na(meth_IQR)
 	}
+
+	l = l & !is.na(corr)
 
 	cat("filter by fdr...\n")
 	cr2 = GRanges()
@@ -390,4 +404,68 @@ reduce_cr = function(cr, expr, txdb, max_gap = 1000) {
 	attr(cr2, "cov_filter") = attr(cr, "cov_filter")
 
 	cr2
+}
+
+add_subtype_specificity = function(cr, cutoff = 0.05, suffix = "_ss") {
+	
+	factor = attr(cr, "factor")
+	if(is.null(factor)) {
+		stop("no grouping settings.")
+	}
+
+	level = unique(factor)
+	n_level = length(level)
+	sample_id = attr(cr, "sample_id")
+	subtype_ss = matrix(nrow = length(cr), ncol = n_level)
+	colnames(subtype_ss) = level
+
+	meth_mat = mcols(cr)
+	meth_mat = meth_mat[, grep("^mean_meth_", colnames(meth_mat))]
+	meth_mat = as.matrix(meth_mat)
+	counter = set_counter(length(cr))
+	for(i in seq_len(length(cr))) {
+		x = meth_mat[i, paste0("mean_meth_", sample_id)]
+		# pairwise t-test, t-value and p-value
+		mat_t = matrix(nrow = n_level, ncol = n_level)
+		rownames(mat_t) = level
+		colnames(mat_t) = level
+		mat_p = mat_t
+
+		for(i1 in 2:n_level) {
+			for(i2 in 1:(i1-1)) {
+				x1 = x[factor == level[i1]]
+				x2 = x[factor == level[i2]]
+				test = t.test(x1, x2)
+				mat_t[i1, i2] = test$statistic
+				mat_p[i1, i2] = test$p.value
+				mat_t[i2, i1] = -mat_t[i1, i2]
+				mat_p[i2, i1] = mat_p[i1, i2]	
+			}
+		}
+
+		ss = apply(mat_t, 1, function(x) {
+			x = x[!is.na(x)]
+			if(all(x > 0)){
+				return(1)
+			} else if(all(x < 0)) {
+				return(-1)
+			} else {
+				return(0)
+			}
+		})
+
+		l = apply(mat_p, 1, function(x) {
+			x = x[!is.na(x)]
+			all(x < 0.05)
+		})
+		ss[!l] = 0
+		subtype_ss[i, ] = ss
+
+		counter()
+	}
+
+	colnames(subtype_ss) = paste0(colnames(subtype_ss), suffix)
+
+	mcols(cr) = cbind(as.data.frame(mcols(cr)), subtype_ss)
+	return(cr)
 }

@@ -5,7 +5,7 @@ QSUBENV = new.env()
 
 qsub_reset = function() {
 	if(!is.null(QSUBENV$image_file)) {
-		file.remove(QSUBENV$image_file, )
+		file.remove(QSUBENV$image_file)
 	}
 	QSUBENV$image_file = NULL
 }
@@ -34,7 +34,7 @@ qsub = function(name, options, code, share = FALSE, private = NULL, dependency =
 	image_file = tempfile(tmpdir = tmpdir, fileext = ".RData")
 	wd = getwd()
 
-	loaded_library = gsub("package:", "", grep("package:", search(), vaule = TRUE))
+	loaded_library = gsub("package:", "", grep("package:", search(), value = TRUE))
 	assign(".loaded_library", loaded_library, envir = .GlobalEnv)
 
 	if(share) {
@@ -108,9 +108,9 @@ file.remove('@{private_file}')
 
 Rscript-3.1.2 @{r_file}
 
-rm @{r_file}
+#rm @{r_file}
 
-@{if(share) paste('rm', image_file)}
+@{if(!share) paste('rm', image_file)}
 touch @{flag_file}
 
 "), con = sh_file)

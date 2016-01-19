@@ -114,64 +114,50 @@ snv_indel_rainfall = function(pid, type = c("all", "intragenic"),
 # rownames(rpkm) = gn[rownames(rpkm)]
 # colnames(rpkm) = gsub("_tumor$", "", colnames(rpkm))
 
-
-snv_oncoprint = function(files, samples, filename = "Rplots.pdf", expr = NULL) {
+read_snv_mutation = function(files, samples, type = "exonic") {
 
 	genes = list()
+	for(i in seq_along(files)) {
+		tb = read.table(files[i], stringsAsFactors = FALSE, sep = "\t", quote = "", header = TRUE, comment.char = "")
+		tb = tb[!tb[[18]] %in% c("synonymous SNV"), ,drop = FALSE]
+		tb = tb[tb[[16]] == type, ,drop = FALSE]
+		g = tb[[17]]
+		g = gsub("\\(.*\\)", "", g)
+		g = unique(unlist(strsplit(g, ",")))
+
+		genes[[i]] = unique(g)
+	}
+
+	all_genes = unique(unlist(genes))
+
+	qqcat("@{length(all_genes)} genes\n")
+
+	mat = matrix(0, nrow = length(all_genes), ncol = length(samples))
+	rownames(mat) = all_genes
+	colnames(mat) = samples
+	for(i in seq_along(genes)) {
+		mat[genes[[i]], i] = 1
+	}
+
+	return(mat)
+}
+
+snv_oncoprint = function(files, samples, filename = "Rplots.pdf") {
+
 	all_types = c("exonic", "exonic;splicing", "splicing",
 		"ncRNA_intronic", "intronic", "intergenic", "upstream", "downstream",
 		"UTR3", "UTR5")
 	for(type in all_types) {
 		qqcat("drawing snv oncoprint for @{type}\n")
-		for(i in seq_along(files)) {
-			tb = read.table(files[i], stringsAsFactors = FALSE, sep = "\t", quote = "")
-			tb = tb[!tb[[18]] %in% c("synonymous SNV"), ,drop = FALSE]
-			tb = tb[tb[[16]] == type, ,drop = FALSE]
-			g = tb[[17]]
-			g = gsub("\\(.*\\)", "", g)
-			g = unique(unlist(strsplit(g, ",")))
+		
+		mat = read_snv_mutation(files, samples, type = type)
+		if(nrow(mat) == 0) next
 
-			genes[[i]] = unique(g)
-		}
-
-		if(!is.null(expr)) {
-			genes = lapply(genes, function(g) intersect(g, rownames(expr)))
-		}
-
-		all_genes = unique(unlist(genes))
-
-		if(length(all_genes) == 0) next
-
-		qqcat("@{length(all_genes)} genes\n")
-
-		mat = matrix(0, nrow = length(all_genes), ncol = length(samples))
-		rownames(mat) = all_genes
-		colnames(mat) = samples
-		for(i in seq_along(genes)) {
-			mat[genes[[i]], i] = 1
-		}
-
-		gn2 = gn[gn %in% rownames(mat)]
-		len = structure(gene_len[ names(gn2) ], names = gn2)
-
-		pdf(qq(filename), width = 12, height = nrow(mat)/5+5)
-		ht_list = Heatmap(mat, name = "snv", col = colorRamp2(c(0, 5), c("white", "#FF0000")), show_row_names = TRUE,
-			    cluster_columns = FALSE, cluster_rows = FALSE, row_order = order(apply(mat, 1, function(x) sum(x>0)), decreasing = TRUE),
-			    column_order = order(apply(mat, 2, function(x) sum(x>0)), decreasing = TRUE),
-				top_annotation = HeatmapAnnotation(barplot = anno_barplot(apply(mat, 2, function(x) sum(x > 0)), baseline = 0)), top_annotation_height = unit(3, "cm"),
-				column_title = qq("OncoPrint for nonsynonymous somatic snvs"), column_names_gp = gpar(fontsize = 12)) + 
-			rowAnnotation(row_barplot = anno_barplot(apply(mat, 1, function(x) sum(x > 0)), which = "row", baseline = 0), width = unit(4, "cm")) +
-			Heatmap(len[rownames(mat)], show_row_names = FALSE, name = "sum(exon_length)", width = unit(5, "mm"))
-		if(!is.null(expr)) {
-			expr2 = expr[rownames(mat), ]
-			basemean = rowMeans(expr2)
-			ocn = colnames(expr2)
-			expr2 = t(scale(t(expr2)))
-			colnames(expr2) = ocn
-			ht_list = ht_list + Heatmap(expr2[, intersect(colnames(mat)[order(apply(mat, 2, function(x) sum(x>0)), decreasing = TRUE)], colnames(expr))], cluster_columns = FALSE,
-										col = colorRamp2(c(-3, 0, 3), c("green", "white", "red")), show_row_names = FALSE, column_title = "scaled expr") +
-				                Heatmap(basemean, name = "basemean", show_row_names = FALSE, width = unit(5, "mm"))
-		}
+		pdf(gsub("pdf$", paste0(type, ".pdf"), filename), width = 12, height = nrow(mat)/5+5)
+		ht_list = oncoPrint(list(snv = mat), 
+			alter_fun_list = list(snv = function(x, y, w, h) grid.rect(x, y, w*0.9, h*0.9, gp = gpar(fill = "red", col = NA))),
+			col = c("snv" = "red"), show_column_names = TRUE, remove_empty_columns = FALSE,
+			heatmap_legend_param = list(title = "alterations"))
 		draw(ht_list, column_title = qq("@{nrow(mat)} genes having snvs (@{type})"))
 		dev.off()
 
@@ -198,61 +184,47 @@ snv_oncoprint = function(files, samples, filename = "Rplots.pdf", expr = NULL) {
 # snv_oncoprint(files, samples, filename = "nonsynonymous_germline_snvs_oncoprint_@{type}.pdf", expr = rpkm)
 
 
-indel_oncoprint = function(files, samples, filename = "Rplots.pdf", expr = NULL) {
-	# indels
+read_indel_mutation = function(files, samples, type = "exonic") {
+
 	genes = list()
+	for(i in seq_along(files)) {
+		tb = read.table(files[i], stringsAsFactors = FALSE, sep = "\t", quote = "", header = TRUE, comment.char = "")
+		
+		tb = tb[tb[[14]] == type, ,drop = FALSE]
+		g = tb[[15]]
+		g = gsub("\\(.*\\)", "", g)
+		g = unique(unlist(strsplit(g, ",")))
+
+		genes[[i]] = unique(g)
+	}
+
+	all_genes = unique(unlist(genes))
+
+	qqcat("@{length(all_genes)} genes\n")
+
+	mat = matrix(0, nrow = length(all_genes), ncol = length(samples))
+	rownames(mat) = all_genes
+	colnames(mat) = samples
+	for(i in seq_along(genes)) {
+		mat[genes[[i]], i] = 1
+	}
+	return(mat)
+}
+
+indel_oncoprint = function(files, samples, filename = "Rplots.pdf") {
+	# indels
 	all_types = c("exonic", "downstream", "intronic", "upstream", "UTR3", "UTR5")
 	for(type in all_types) {
 		qqcat("drawing indel oncoprint for @{type}\n")
-		for(i in seq_along(files)) {
-			tb = read.table(files[i], stringsAsFactors = FALSE, sep = "\t", quote = "")
-			
-			tb = tb[tb[[14]] == type, ,drop = FALSE]
-			g = tb[[15]]
-			g = gsub("\\(.*\\)", "", g)
-			g = unique(unlist(strsplit(g, ",")))
+		
+		mat = read_indel_mutation(files, samples, type = type)
+		if(nrow(mat) == 0) next
 
-			genes[[i]] = unique(g)
-		}
-
-		if(!is.null(expr)) {
-			genes = lapply(genes, function(g) intersect(g, rownames(expr)))
-		}
-
-		all_genes = unique(unlist(genes))
-
-		if(length(all_genes) == 0) next
-
-		qqcat("@{length(all_genes)} genes\n")
-
-		mat = matrix(0, nrow = length(all_genes), ncol = length(samples))
-		rownames(mat) = all_genes
-		colnames(mat) = samples
-		for(i in seq_along(genes)) {
-			mat[genes[[i]], i] = 1
-		}
-
-		gn2 = gn[gn %in% rownames(mat)]
-		len = structure(gene_len[ names(gn2) ], names = gn2)
-
-		pdf(qq(filename), width = 12, height = nrow(mat)/5+5)
-		ht_list = Heatmap(mat, name = "indel", col = colorRamp2(c(0, 2), c("white", "#FF0000")), show_row_names = TRUE,
-			    cluster_columns = FALSE, cluster_rows = FALSE, row_order = order(apply(mat, 1, function(x) sum(x>0)), decreasing = TRUE),
-			    column_order = order(apply(mat, 2, function(x) sum(x>0)), decreasing = TRUE),
-				top_annotation = HeatmapAnnotation(barplot = anno_barplot(apply(mat, 2, function(x) sum(x>0)), baseline = 0)), top_annotation_height = unit(3, "cm"),
-				column_title = qq("OncoPrint for somatic indels @{type}"), column_names_gp = gpar(fontsize = 12)) + 
-			rowAnnotation(row_barplot = anno_barplot(apply(mat, 1, function(x) sum(x>0)), which = "row", baseline = 0), width = unit(4, "cm")) +
-			Heatmap(len[rownames(mat)], show_row_names = FALSE, name = "sum(exon_length)", width = unit(5, "mm"))
-		if(!is.null(expr)) {
-			expr2 = expr[rownames(mat), ]
-			basemean = rowMeans(expr2)
-			ocn = colnames(expr2)
-			expr2 = t(scale(t(expr2)))
-			colnames(expr2) = ocn
-			ht_list = ht_list + Heatmap(expr2[, intersect(colnames(mat)[order(apply(mat, 2, function(x) sum(x>0)), decreasing = TRUE)], colnames(expr))], cluster_columns = FALSE,
-									col = colorRamp2(c(-3, 0, 3), c("green", "white", "red")), show_row_names = FALSE, column_title = "scaled expr") +
-			                    Heatmap(basemean, name = "basemean", show_row_names = FALSE, width = unit(5, "mm"))
-		}
+		pdf(gsub("pdf$", paste0(type, ".pdf"), filename), width = 12, height = nrow(mat)/5+5)
+		ht_list = oncoPrint(list(indel = mat), 
+			alter_fun_list = list(indel = function(x, y, w, h) grid.rect(x, y, w*0.9, h*0.9, gp = gpar(fill = "blue", col = NA))),
+			col = c("indel" = "blue"), show_column_names = TRUE, remove_empty_columns = FALSE,
+			heatmap_legend_param = list(title = "alterations"))
 		draw(ht_list, column_title = qq("@{nrow(mat)} genes having indel (@{type})"))
 		dev.off()
 
@@ -266,6 +238,51 @@ indel_oncoprint = function(files, samples, filename = "Rplots.pdf", expr = NULL)
 	}
 }
 
+
+snv_indel_oncoprint = function(files_snv, files_indel, samples, filename = "Rplots.pdf") {
+
+	if(!is.null(names(files_snv))) {
+		files_snv = files_snv[intersect(samples, names(files_snv))]
+		samples_snv = names(files_snv)
+	} else if(length(files_snv) != length(samples)) {
+		stop("length of `files_snv` and `samples` differ")
+	} else {
+		samples_snv = samples
+	}
+
+	if(!is.null(names(files_indel))) {
+		files_indel = files_indel[intersect(samples, names(files_indel))]
+		samples_indel = names(files_indel)
+	} else if(length(files_indel) != length(samples)) {
+		stop("length of `files_indel` and `samples` differ")
+	} else {
+		samples_indel = samples
+	}
+
+	mat_snv = read_snv_mutation(files_snv, samples_snv)
+	mat_indel = read_indel_mutation(files_indel, samples_indel)
+
+	common_rn = union(rownames(mat_snv), rownames(mat_indel))
+	common_cn = union(colnames(mat_snv), colnames(mat_indel))
+
+	mat_snv2 = matrix(0, nrow = length(common_rn), ncol = length(common_cn))
+	dimnames(mat_snv2) = list(common_rn, common_cn)
+	mat_snv2[rownames(mat_snv), colnames(mat_snv)] = mat_snv
+
+	mat_indel2 = matrix(0, nrow = length(common_rn), ncol = length(common_cn))
+	dimnames(mat_indel2) = list(common_rn, common_cn)
+	mat_indel2[rownames(mat_indel), colnames(mat_indel)] = mat_indel
+
+	pdf(filename, width = 12, height = nrow(mat_snv2)/5+5)
+	ht_list = oncoPrint(list(snv = mat_snv2, indel = mat_indel2),
+		alter_fun_list = list(
+	        snv = function(x, y, w, h) grid.rect(x, y, w*0.9, h*0.9, gp = gpar(fill = "red", col = NA)),
+	        indel = function(x, y, w, h) grid.rect(x, y, w*0.9, h*0.4, gp = gpar(fill = "blue", col = NA))
+	    ), col = c(snv = "red", indel = "blue"), show_column_names = TRUE, remove_empty_columns = FALSE,
+	    heatmap_legend_param = list(title = "alterations"))
+	draw(ht_list, column_title = qq("@{nrow(mat_snv2)} genes having functional snv/indel"))
+	dev.off()
+}
 
 # files = scan(pipe("ls /icgc/dkfzlsdf/analysis/hipo/hipo_047/results_per_pid_pcawg/*/platypus_indel/*_somatic_indels_conf_8_to_10.vcf"), what = "character")
 # samples = gsub("^.*results_per_pid_pcawg/(.*?)/platypus_indel.*$", "\\1", files)
@@ -373,7 +390,7 @@ coverage_hilbert_curve = function(pid, tumor_coverage_file, control_coverage_fil
 }
 
 
-visualize_defuse = function(files, prefix = "") {
+visualize_defuse = function(files, prefix = "", ...) {
 
 	chr = NULL
 	lt = list()
@@ -385,7 +402,7 @@ visualize_defuse = function(files, prefix = "") {
 		x2$gene1 = ifelse(x$gene_name1 > x$gene_name2, x$gene_name2, x$gene_name1)
 		x2$gene2 = ifelse(x$gene_name1 > x$gene_name2, x$gene_name1, x$gene_name2)
 
-		chr_info = ifelse(x$gene_chromosome1 == x$gene_chromosome2, "intra", "inter")
+		chr_info = ifelse(x$gene_chromosome1 == x$gene_chromosome2, "intra_chr", "inter_chr")
 
 		chr[paste(x2$gene1, x2$gene2, sep = "|")] = chr_info
 
@@ -406,7 +423,7 @@ visualize_defuse = function(files, prefix = "") {
 	ht_list = rowAnnotation(bar = row_anno_barplot(apply(mat, 1, function(x) sum(x != 0)), 
 		axis_direction = "reverse", axis = TRUE, axis_side = "bottom", baseline = 0), width = unit(2, "cm")) +
 	Heatmap(mat, col = c("white", "red"), show_row_dend = FALSE, show_row_names = FALSE,
-		heatmap_legend_param = list(title = "#fusion")) + 
+		heatmap_legend_param = list(title = "#fusion"), ...) + 
 	Heatmap(chr[rownames(mat)], col = c("red", "blue"), name = "chr_info", show_row_names = FALSE, width = unit(5, "mm"))
 	draw(ht_list, column_title = qq("@{nrow(mat)} gene pairs"))
 	dev.off()
@@ -414,7 +431,7 @@ visualize_defuse = function(files, prefix = "") {
 	write.csv(cbind(mat, chr = chr[rownames(mat)]), file = qq("@{prefix}_gene_fusion_stat.csv"))
 
 	foo = apply(mat, 1, function(x) sum(x>0))
-	foo_col = colorRamp2(seq(min(foo), max(foo), length = length(files)), brewer.pal(length(files), "Spectral"))
+	foo_col = colorRamp2(seq(min(foo), max(foo), length = 11), rev(brewer.pal(11, "Spectral")))
 
 	nc = ceiling(sqrt(length(files)))
 	nr = ceiling(length(files)/nc)
@@ -423,6 +440,7 @@ visualize_defuse = function(files, prefix = "") {
 	chr = NULL
 	lt = list()
 	for(f in files) {
+		qqcat("plotting @{f}\n")
 		df = read.table(f, stringsAsFactors = FALSE, header = TRUE, sep = "\t", quote = "")
 		x = df[,c("gene_chromosome1", "gene_chromosome2", "gene_name1", "gene_name2")]
 

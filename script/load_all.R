@@ -1,17 +1,18 @@
 
 # old version of bsseq which is used in the pipeline
 library(parallel)
+library(MASS)
 library(grid)
 library(rjson)  # for reading gencode data
 library(DESeq2)  # differential expression analysis
 library(gplots)  # venn plot
 
 library(RColorBrewer)
-library(MASS)
 library(GenomicRanges)
 library(GenomicFeatures)
 library(png)
 library(Gviz)
+library(matrixStats)
 
 library(GTF) # /home/guz/project/development/GTF_0.0.1.tar.gz
 library(GetoptLong) 

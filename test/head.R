@@ -2,67 +2,67 @@
 # universal
 # 'normal' is a hard coded type
 sample_text = 
-"id   type     WGBS  RNASEQ   CHIPSEQ    col
-AK015    IDH    TRUE    TRUE    FALSE    #FF0000
-AK041    IDH    TRUE    TRUE    FALSE    #FF0000
-AK066    IDH    TRUE    TRUE    TRUE    #FF0000
-AK068    IDH    TRUE    TRUE    FALSE    #FF0000
-AK076    IDH    TRUE    TRUE    TRUE    #FF0000
-AK085    IDH    TRUE    TRUE    FALSE    #FF0000
-AK102    IDH    TRUE    TRUE    FALSE    #FF0000
-AK103    IDH    TRUE    TRUE    FALSE    #FF0000
-AK124    IDH    TRUE    TRUE    TRUE    #FF0000
-AK199    IDH    TRUE    TRUE    TRUE    #FF0000
-AK213    IDH    TRUE    TRUE    TRUE    #FF0000
-AK231    IDH    TRUE    TRUE    TRUE    #FF0000
-AK030    MES    TRUE    TRUE    FALSE    #00FF00
-AK055    MES    TRUE    TRUE    FALSE    #00FF00
-AK071    MES    TRUE    TRUE    TRUE    #00FF00
-AK072    MES    TRUE    TRUE    FALSE    #00FF00
-AK091    MES    TRUE    TRUE    TRUE    #00FF00
-AK139    MES    TRUE    TRUE    TRUE    #00FF00
-AK153    MES    TRUE    TRUE    TRUE    #00FF00
-AK168    MES    TRUE    TRUE    TRUE    #00FF00
-AK185    MES    TRUE    TRUE    FALSE    #00FF00
-AK195    MES    TRUE    TRUE    FALSE    #00FF00
-AK227    MES    TRUE    TRUE    FALSE    #00FF00
-AK236    MES    TRUE    TRUE    FALSE    #00FF00
-AK003    PDGFRA    TRUE    TRUE    FALSE    #0000FF
-AK017    PDGFRA    TRUE    TRUE    FALSE    #0000FF
-AK049    PDGFRA    TRUE    TRUE    FALSE    #0000FF
-AK051    PDGFRA    TRUE    TRUE    FALSE    #0000FF
-AK142    PDGFRA    TRUE    TRUE    FALSE    #0000FF
-AK149    PDGFRA    TRUE    TRUE    TRUE    #0000FF
-AK156    PDGFRA    TRUE    TRUE    TRUE    #0000FF
-AK165    PDGFRA    TRUE    TRUE    FALSE    #0000FF
-AK173    PDGFRA    TRUE    TRUE    TRUE    #0000FF
-AK183    PDGFRA    TRUE    TRUE    TRUE    #0000FF
-AK203    PDGFRA    TRUE    TRUE    FALSE    #0000FF
-AK217    PDGFRA    TRUE    TRUE    FALSE    #0000FF
-AK053    RTK_II    TRUE    TRUE    FALSE    #00FFFF
-AK074    RTK_II    TRUE    TRUE    FALSE    #00FFFF
-AK088    RTK_II    TRUE    TRUE    FALSE    #00FFFF
-AK089    RTK_II    TRUE    TRUE    TRUE    #00FFFF
-AK098    RTK_II    TRUE    TRUE    FALSE    #00FFFF
-AK100    RTK_II    TRUE    TRUE    TRUE    #00FFFF
-AK132    RTK_II    TRUE    TRUE    FALSE    #00FFFF
-AK158    RTK_II    TRUE    TRUE    TRUE    #00FFFF
-AK167    RTK_II    TRUE    TRUE    FALSE    #00FFFF
-AK178    RTK_II    TRUE    TRUE    TRUE    #00FFFF
-AK188    RTK_II    TRUE    TRUE    FALSE    #00FFFF
-AK216    RTK_II    TRUE    TRUE    TRUE    #00FFFF
-normal_occipital     normal  TRUE    TRUE  FALSE   grey
-normal_parietal     normal  TRUE    TRUE  FALSE   grey
-normal_temporal     normal  TRUE    TRUE  FALSE   grey
-normal_frontal     normal  TRUE    TRUE   FALSE  grey
+"id   type
+AK015    IDH
+AK041    IDH
+AK066    IDH
+AK068    IDH
+AK076    IDH
+AK085    IDH
+AK102    IDH
+AK103    IDH
+AK124    IDH
+AK199    IDH
+AK213    IDH
+AK231    IDH
+AK030    MES
+AK055    MES
+AK071    MES
+AK072    MES
+AK091    MES
+AK139    MES
+AK153    MES
+AK185    MES
+AK195    MES
+AK227    MES
+AK236    MES
+AK003    RTK_I
+AK017    RTK_I
+AK049    RTK_I
+AK051    RTK_I
+AK142    RTK_I
+AK149    RTK_I
+AK156    RTK_I
+AK165    RTK_I
+AK173    RTK_I
+AK183    RTK_I
+AK203    RTK_I
+AK217    RTK_I
+AK053    RTK_II
+AK074    RTK_II
+AK088    RTK_II
+AK089    RTK_II
+AK098    RTK_II
+AK100    RTK_II
+AK132    RTK_II
+AK158    RTK_II
+AK167    RTK_II
+AK178    RTK_II
+AK188    RTK_II
+AK216    RTK_II
+#normal_occipital     normal
+#normal_parietal     normal
+#normal_temporal     normal
+#normal_frontal     normal
 "
 
-SAMPLE = read.table(textConnection(sample_text), header = TRUE, stringsAsFactors = FALSE, comment.char = "")
+SAMPLE = read.table(textConnection(sample_text), header = TRUE, stringsAsFactors = FALSE)
 rownames(SAMPLE) = SAMPLE$id
 
-SAMPLE_COLOR = unique(SAMPLE$col)
-names(SAMPLE_COLOR) = unique(SAMPLE$type)
-
+#SAMPLE_COLOR = c("IDH" = "red", "MES" = "green", "PDGFRA" = "blue", "RTK_II" = "orange", "normal" = "grey")
+#SAMPLE_COLOR = c("IDH" = "red", "MES" = "green", "RTK_I" = "blue", "RTK_II" = "orange")
+SAMPLE_COLOR = brewer.pal(4, "Set1")
+names(SAMPLE_COLOR) = c("IDH", "MES", "RTK_I", "RTK_II")
 
 
 ############################################################
@@ -144,20 +144,9 @@ methylation_hooks$coverage = function(bs_fit = methylation_hooks$obj,
 }
 
 
-###########################################################################
-
-# wgbs_qcplot("AK100")
-# plot_coverage_and_methylation_on_genome("AK100", chromosome = c("chr21", "chr22"))
-
-# global_methylation_distribution(SAMPLE$id)
-# global_methylation_distribution(SAMPLE$id, by_chr = TRUE)
-
-
 ##############
-if(!exists("gene_annotation", envir = .GlobalEnv, inherits = FALSE)) {
-    cat("Loading gencode...\n")
-    load("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/data/gencode_v19_transcript_merged.RData")
-}
+gencode_gtf_file = "/icgc/dkfzlsdf/analysis/B080/guz/gencode/gencode.v19.annotation.gtf"
+
 if(!exists("expression", envir = .GlobalEnv, inherits = FALSE)) {
     cat("load expression...\n")
     load("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/data/hipo_016_rnaseq_gencode19expression.RData")
@@ -167,7 +156,7 @@ if(!exists("txdb", envir = .GlobalEnv, inherits = FALSE)) {
     txdb = loadDb("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/data/gencode.v19.sqlite")
 }
 
-gt = sapply(gene_annotation$gtf, function(x) x$type)
+gt = extract_field_from_gencode(gencode_gtf_file, level = "gene", primary_key = "gene_id", field = "gene_type")
 gt = gt[gt == "protein_coding"]
 
 expr = expression$rpkm[names(gt), ]
@@ -179,8 +168,9 @@ SAMPLE = SAMPLE[SAMPLE$type != "normal", , drop = FALSE]
 expr = expr[l, SAMPLE$id, drop = FALSE]
 
 
-chromosome = paste0("chr", c(1:22, "X"))
+chromosome = paste0("chr", c(1:22))
 
+genome = "hg19"
 
 if(!exists("GENOMIC_FEATURE_LIST", envir = .GlobalEnv)) {
     # annotate to other regions
@@ -228,6 +218,7 @@ cp = initialize_project(
     species = "hg19",
     methylation_hooks = methylation_hooks,
     expr = expr,
+    gencode_gtf_file = gencode_gtf_file,
     txdb = txdb,
     genomic_features = GENOMIC_FEATURE_LIST,
     chipseq = list(H3K4me3 = get_hm_sample("H3K4me3"), 

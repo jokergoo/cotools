@@ -226,5 +226,5 @@ plot_subgroup_specificity_heatmap = function(gr_list, genomic_features = NULL) {
 	}
 
 	message(qq("generating heatmap, (@{nrow(mat2)}, @{ncol(mat2)})"))
-	draw(ht_list)
+	ht_list
 }

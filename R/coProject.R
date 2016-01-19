@@ -24,7 +24,7 @@ initialize_project = function(sample_id, chromosome, species,
 	txdb, 
 	methylation_hooks, expr,
 	get_hm,
-	genomic_features) {
+	genomic_features, dir = ".") {
 
 	cp = new("coProject")
 
@@ -90,6 +90,9 @@ initialize_project = function(sample_id, chromosome, species,
 	}
 
 	if(!missing(expr)) {
+		if(is.data.frame(expr)) {
+			stop("I don't like expression stored in a data frame, change to matrix.")
+		}
 		cat("validate expression...\n")
 		cn = intersect(sample_id, colnames(expr))
 		if(length(cn) == 0) {

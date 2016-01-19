@@ -2,9 +2,7 @@ library(GetoptLong)
 
 GetoptLong(c("chr=s", ""))
 
-setwd("~/project/development/cotools/R")
-for(f in dir()) source(f)
-
+source("~/project/development/cotools/script/load_all.R")
 source("~/project/development/cotools/test/head.R")
 
 co_opt$wd = "/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/"
@@ -21,6 +19,7 @@ for(chr in chromosome) {
                       private = "chr", 
                       share = TRUE, 
                       {
+                        # !!!!! expr should only contain protein_coding genes!!!!!
                         gr = correlated_regions(SAMPLE$id, expr, txdb, chr = chr, factor = SAMPLE$type, col = SAMPLE_COLOR)
                         saveRDS(gr, file = qq("@{co_opt$wd}/rds/@{chr}_cr.rds"))
                       })
@@ -51,10 +50,20 @@ qid = qsub(name = "cr_filter",
            }
 )
 
+cv = rowIQRs(expr)/rowMedians(expr)
+
+
+cr_filtered = add_subtype_specificity(cr_filtered)
+cr_filtered$expr_cv = cv[cr_filtered$gene_id]
+
+cr_filtered_raw_meth = add_subtype_specificity(cr_filtered_raw_meth)
+cr_filtered_raw_meth$expr_cv = cv[cr_filtered_raw_meth$gene_id]
+
+
 
 ############## part 2: downstream analysis ################
 
-load(qq("@{co_opt$wd}/rds/cr_filtered_fdr_0.05.rds"))
+cr_filtered = readRDS(qq("@{co_opt$wd}/rds/cr_filtered_fdr_0.05.rds"))
 
 ### some per chromosome barplots
 neg_cr = cr_filtered[cr_filtered$corr < 0]
@@ -65,7 +74,7 @@ n2 = length(pos_cr) * 5
 w1 = sum(width(neg_cr))
 w2 = sum(width(pos_cr))
 
-pdf("cr_number.pdf", width = 4, height = 6)
+pdf(qq("@{co_opt$wd}/image/cr_number.pdf"), width = 4, height = 6)
 par(mfrow = c(2, 1), mar = c(3, 4, 1, 1))
 barplot(c("neg_cr" = n1, "pos_cr" = n2), beside = TRUE, col = c("green", "red"), 
     ylab = "#CpG", axes = FALSE)
@@ -78,13 +87,21 @@ dev.off()
 #######
 ## test
 gi = "ENSG00000060982.10"  # BCAT1, neg_cr at two alternative tx start site, 25.05M, 25.1M
-cr = readRDS(qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/correlated_region/chr12_cr.rds"))
+cr = readRDS(qq("@{co_opt$wd}/rds/chr12_cr.rds"))
 x = cr[cr$gene_id == "ENSG00000060982.10"]
 
-cr = readRDS(qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/correlated_region/chr12_cr_raw_meth.rds"))
+cr = readRDS(qq("@{co_opt$wd}/rds/chr12_cr_raw_meth.rds"))
 x2 = cr[cr$gene_id == "ENSG00000060982.10"]
 
-pdf("BCAT1_correlation_compare.pdf")
+methylation_hooks$set("chr12")
+s = start(x)
+e = end(x)
+cov = sapply(seq_along(s), function(i) {
+        ind = extract_sites(s[i], e[i], methylation_hooks$site())
+        mean(methylation_hooks$coverage(row_index = ind))
+    })
+
+pdf(qq("@{co_opt$wd}/image/BCAT1_correlation_compare.pdf"))
 plot(x$corr, x2$corr, col = ifelse(cov > 5, "red", "black"), pch = ifelse(x$meth_anova < 0.01, 16, 1),
 xlab = "corr calculated from smoothed meth", 
     ylab = "corr calculated from raw meth", 
@@ -93,8 +110,8 @@ legend("topleft", pch = c(1, 1, 16), col = c("red", "black", "black"), legend = 
 text(0.2, -0.6, qq("corr_all = @{sprintf('%.2f', cor(x$corr, x2$corr))}\ncorr_diff_meth = @{l = x$meth_anova < 0.01; sprintf('%.2f', cor(x$corr[l], x2$corr[l]))}"), adj = c(0, 0.5))
 dev.off()
 
-pdf("BCAT1_meth_plot.pdf", width = 10, height = 8)
-compare_meth("chr12", 25050000, 25060000, x, x2)
+pdf(qq("@{co_opt$wd}/image/BCAT1_meth_plot.pdf"), width = 10, height = 8)
+compare_meth(cr_filtered, "chr12", 25050000, 25060000, x, x2)
 dev.off()
 
 
@@ -102,15 +119,15 @@ dev.off()
 qsub(name = "cr_qc", options = "-l walltime=3:00:00,mem=5G", 
     share = TRUE, {
         pdf(qq("@{co_opt$wd}/image/cr_qc.pdf"), width = 8, height = 16)
-        cr_qc(template = paste0(co_opt$wd, "/rds/@{chr}_cr.rds"))
+        foo = cr_qc(template = paste0(co_opt$wd, "/rds/@{chr}_cr.rds"))
         dev.off()
 })
 
 
 qsub(name = "hilbert_sig", options = "-l walltime=3:00:00,mem=5G", 
     share = TRUE, {
-        pdf(qq("@{co_opt$wd}/image/hilbert_sig.pdf"), width = 18, height = 12)
-        cr_hilbert(cr = cr_filtered, txdb = txdb)
+        pdf(qq("@{co_opt$wd}/image/hilbert_sig.pdf"), width = 12, height = 12)
+        cr_hilbert(cr = cr_filtered, txdb = txdb, merge_chr = TRUE)
         dev.off()
 })
 
@@ -147,24 +164,12 @@ dev.off()
 ### scatterplot
 qsub(name = "cr_scatterplot_me", options = "-l walltime=3:00:00,mem=5G", 
     share = TRUE, {
-        cr_scatterplot_me(cr_filtered, expr, text_column = c("corr_p", "meth_anova", "meth_diameter", "gene_tss_dist"))
+        pdf(qq("@{co_opt$wd}/image/cr_scatter.pdf"), width = 8, height = 8)
+        cr_scatterplot_me(cr_filtered, expr, gi = "ENSG00000060982.10", text_column = c("corr_p", "meth_anova", "meth_diameter", "gene_tss_dist"))
+        dev.off()
 })
 
 
-### gviz
-tx_list = transcriptsBy(txdb, by = "gene")
-gi = "ENSG00000160233.6"
-for(chr in unique(cr_filtered$gi)) {
-    qsub(name = qq("cr_gviz_@{chr}"), options = "-l walltime=3:00:00,mem=5G", 
-        share = TRUE, {
-            cr_subset = cr_filtered[seqnames(cr_filtered) == chr]
-            for(gi in unique(cr_subset$gi)) {
-                pdf(qq("@{co_opt$wd}/image/gviz/gviz_@{gi}.pdf"), width = 16, height = 12)
-                gviz_cr(cr_filtered, gi, expr, txdb, tx_list = tx_list[[gi]]$tx_name, gf_list = GENOMIC_FEATURE_LIST[c("cgi", "dnase", "tfbs")])
-                dev.off()
-            }
-        })
-}
 
 ######## part 3: complex heatmaps ###############
 
@@ -202,17 +207,32 @@ if(which == "neg") {
 }
 
 ht_global_opt(heatmap_column_title_gp = gpar(fontsize = 10))
-pdf(qq("heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.pdf"), width = 18, height = 10)
-enriched_heatmap_list_on_gene(cr_filtered, GENOMIC_FEATURE_LIST$cgi, txdb, log2(expr+1), hm_list, 
+pdf(qq("@{co_opt$wd}/image/heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.pdf"), width = 18, height = 10)
+enriched_heatmap_list_on_gene(cr, GENOMIC_FEATURE_LIST$cgi, txdb, log2(expr+1), hm_list, 
     hm_name = histone_mark, on = on, by = by)
 dev.off()
 
-system(qq("convert heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.pdf heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.png"))
+system(qq("convert @{co_opt$wd}/image/heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.pdf @{co_opt$wd}/image/heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.png"))
 
-pdf(qq("heatmap_cgi_@{by}_@{on}_@{which}_@{histone_mark}.pdf"), width = 18, height = 10)
-enriched_heatmap_list_on_tss_cgi(cr_filtered, GENOMIC_FEATURE_LIST$cgi, txdb, log2(expr+1), hm_list, 
+pdf(qq("@{co_opt$wd}/image/heatmap_cgi_@{by}_@{on}_@{which}_@{histone_mark}.pdf"), width = 12, height = 10)
+enriched_heatmap_list_on_tss_cgi(cr, GENOMIC_FEATURE_LIST$cgi, txdb, log2(expr+1), hm_list, 
     hm_name = histone_mark, by = "gene")
 dev.off()
 
-system(qq("convert heatmap_cgi_@{by}_@{on}_@{which}_@{histone_mark}.pdf heatmap_cgi_@{by}_@{on}_@{which}_@{histone_mark}.png"))
+system(qq("convert @{co_opt$wd}/image/heatmap_cgi_@{by}_@{on}_@{which}_@{histone_mark}.pdf @{co_opt$wd}/image/heatmap_cgi_@{by}_@{on}_@{which}_@{histone_mark}.png"))
+
+### gviz
+tx_list = transcriptsBy(txdb, by = "gene")
+gi = "ENSG00000060982.10"
+for(chr in unique(cr_filtered$gi)) {
+    qsub(name = qq("cr_gviz_@{chr}"), options = "-l walltime=3:00:00,mem=5G", 
+        share = TRUE, {
+            cr_subset = cr_filtered[seqnames(cr_filtered) == chr]
+            for(gi in unique(cr_subset$gi)) {
+                pdf(qq("@{co_opt$wd}/image/gviz/gviz_@{chr}_@{gi}.pdf"), width = 16, height = 12)
+                gviz_cr(cr_filtered, gi, expr, txdb, tx_list = tx_list[[gi]]$tx_name, gf_list = GENOMIC_FEATURE_LIST[c("cgi", "tfbs")], hm_list = hm_list)
+                dev.off()
+            }
+        })
+}
 

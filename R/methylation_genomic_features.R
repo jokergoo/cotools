@@ -6,15 +6,18 @@ heatmap_diff_methylation_in_genomic_features = function(gr, annotation,
 	annotation_color = structure(seq_along(unique(annotation)), names = unique(annotation)), 
 	txdb = NULL, gf_list = NULL, gf_type = "percent", 
 	min_mean_range = 0.2, cutoff = 0.05, adj_method = "BH", title = NULL, 
-	cluster_cols = c("subgroup", "all", "none")) {
+	cluster_cols = c("subgroup", "all", "none"), ...) {
 	
-	if(length(annotation) != ncol(mcols(gr))) {
-		stop("Length of `annotation` should be equal to ncol of `mcols(gr)`\n")
-	}
+	# if(length(annotation) != ncol(mcols(gr))) {
+	# 	stop("Length of `annotation` should be equal to ncol of `mcols(gr)`\n")
+	# }
 	
 	cluster_cols = match.arg(cluster_cols)[1]
+
+	nn = length(gr)
 	
 	mat = as.matrix(mcols(gr))
+	mat = mat[, colnames(mat) != "ncpg", drop = FALSE]
 	nr0 = nrow(mat)
 	qqcat("@{nr0} rows in `gr`\n")
 	
@@ -84,8 +87,8 @@ heatmap_diff_methylation_in_genomic_features = function(gr, annotation,
 
 	ha = HeatmapAnnotation(df = data.frame(anno = annotation), col = list(anno = annotation_color))
 	ht_list = Heatmap(mat, col = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red")), top_annotation = ha,
-		cluster_columns = cluster_cols, show_row_hclust = FALSE,
-		heatmap_legend_param = list(title = "methylation"))
+		cluster_columns = cluster_cols, show_row_dend = FALSE,
+		heatmap_legend_param = list(title = "methylation"), ...)
 	
 	# make a copy of `gr`
 	gr2 = gr
@@ -130,7 +133,7 @@ heatmap_diff_methylation_in_genomic_features = function(gr, annotation,
 			heatmap_legend_param = list(title = "anno_gf"), width = unit(5*length(gf_list), "mm"))
 	}
 	
-	draw(ht_list, column_title = qq("@{title}\n@{length(ogr)} rows"))
+	draw(ht_list, column_title = qq("@{title}\n@{length(ogr)}/@{nn} rows"))
 	
 	return(invisible(ogr))
 }
@@ -183,11 +186,13 @@ get_mean_methylation_in_genomic_features = function(sample_id, gf_list, average 
 				mean_meth = tapply(mtch[,2], mtch[,1], function(i) colMeans(meth_mat[i, , drop = FALSE]))
 				mean_meth = mean_meth[l]
 
+				ncpg = tapply(mtch[,2], mtch[,1], length)
+
 				mean_meth_mat = matrix(unlist(mean_meth), nrow = length(mean_meth), byrow = TRUE)
 				rownames(mean_meth_mat) = names(mean_meth); colnames(mean_meth_mat) = sample_id
 				ind = as.integer(names(mean_meth))
 				gr = gf_list[[i]][ind]
-				mcols(gr) = as.data.frame(mean_meth_mat)
+				mcols(gr) = cbind(as.data.frame(mean_meth_mat), ncpg = ncpg[names(mean_meth)])
 			} else {
 				l = unique(mtch[, 2])
 				gr = meth_gr[l]

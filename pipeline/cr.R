@@ -2,9 +2,8 @@ library(GetoptLong)
 
 GetoptLong(c("chr=s", ""))
 
-setwd("~/project/development/cotools/R")
+source("~/project/development/cotools/script/load_all.R")
 source("~/project/development/cotools/test/head.R")
-for(f in dir(pattern = "\\.R$")) source(f)
 
 co_opt$wd = "/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/"
 

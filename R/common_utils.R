@@ -164,3 +164,60 @@ set_proper_seqlengths = function(gr, species) {
 	seqlengths(gr) = slen
 	return(gr)
 }
+
+
+cor_cols = function (x, abs_cutoff = 0.5, size = 1000, mc = 1, ...) {
+    
+    split_by_block = function(n, size) {
+    	size = min(c(n, size))
+    	REST <- n%%size
+	    LARGE <- n - REST
+	    NBLOCKS <- n%/%size
+	    GROUP <- rep(1:NBLOCKS, each = size)
+	    if (REST > 0)
+	        GROUP <- c(GROUP, rep(NBLOCKS + 1, REST))
+	    split(1:n, GROUP)
+    }	
+
+    NCOL <- ncol(x)
+    SPLIT = split_by_block(NCOL, size)
+    COMBS <- expand.grid(1:length(SPLIT), 1:length(SPLIT))
+    COMBS <- t(apply(COMBS, 1, sort))
+    COMBS <- unique(COMBS)
+
+    nr = nrow(COMBS)
+
+    count_list = mclapply(split_by_block(nr, floor(nr/mc)), function(ind) {
+
+	    count = matrix(0, nrow = NCOL, ncol = length(abs_cutoff))
+	    for (i in ind) {
+	        COMB <- COMBS[i, ]
+
+	        qqcat("block @{COMB[1]}(row @{(COMB[1]-1)*size+1}~@{COMB[1]*size})/@{max(COMBS[,1])} and @{COMB[2]}(row @{(COMB[2]-1)*size+1}~@{COMB[2]*size})/@{max(COMBS[,2])}\n")
+	        G1 <- SPLIT[[COMB[1]]]
+	        G2 <- SPLIT[[COMB[2]]]
+	        
+	        RES <- cor(x[, G1], x[, G2], ...)
+	        for(k in seq_along(abs_cutoff)) {
+	        	tmp_mat = RES
+		        tmp_mat[abs(tmp_mat) > abs_cutoff[k]] = 1
+		        tmp_mat[abs(tmp_mat) < abs_cutoff[k]] = 0
+
+		        count[G1, k] = count[G1, k] + rowSums(tmp_mat)
+		        if(COMB[1] != COMB[2]) {
+		        	count[G2, k] = count[G2, k] + colSums(tmp_mat)
+		        }
+		    }
+	    }
+	    return(count)
+	}, mc.cores = mc)
+
+    count = matrix(0, nrow = NCOL, ncol = length(abs_cutoff))
+    for(i in seq_along(count_list)) {
+    	count = count + count_list[[i]]
+    }
+	dim(count) = c(NCOL, length(abs_cutoff))
+	rownames(count) = colnames(x)
+	colnames(count) = abs_cutoff
+	return(count)
+}

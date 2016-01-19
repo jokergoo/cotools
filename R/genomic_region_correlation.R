@@ -85,6 +85,7 @@ genomic_regions_correlation = function(gr_list_1, gr_list_2, background = NULL,
 	if(!is.null(background)) {
 		strand(background) = "*"
 		background = background[ seqnames(background) %in% chromosome ]
+		background = reduce(background)
 
 		message("overlaping `gr_list_1` to background")
 		gr_list_1 = lapply(gr_list_1, function(gr) {
@@ -144,7 +145,7 @@ genomic_regions_correlation = function(gr_list_1, gr_list_2, background = NULL,
 				gr_random = systemdf(qq("bedtools shuffle -i @{gr_list_1_df_tmp} -g @{chr_len_df_tmp} -incl @{background_df_tmp}"))
 			}
 
-			gr_random = toGRanges(gr_random)
+			gr_random = GRanges(seqnames = gr_random[[1]], ranges = IRanges(gr_random[[2]], gr_random[[3]]))
 
 			# x contains stat for every gr_list_2
 			x = numeric(length(gr_list_2))
