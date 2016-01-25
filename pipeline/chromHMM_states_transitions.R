@@ -6,11 +6,11 @@
 # 	system(qq("perl ~/project/development/ngspipeline2/qsub_single_line.pl '-l walltime=1:00:00,mem=4G -N bed_intersect_@{f}' '@{cmd}'"))
 # }
 
-
 library(GetoptLong)
 GetoptLong(c("s1=s", "",
 	     "s2=s", ""))
-
+library(reshape2)
+library(circlize)
 
 # 'normal' is a hard coded type
 sample_text = 
