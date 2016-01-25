@@ -24,27 +24,25 @@ all_mean = apply(expr, 1, mean, trim = 0.1)  # maybe median?
 m_10 = quantile(all_mean, 0.1)
 m_50 = quantile(all_mean, 0.5)
 cv = apply(expr, 1, function(x) {
-		if(mean(x) < m_50) return(-Inf)
-		if(sd(x) == 0) return(-Inf)
-		sd(x)/(mean(x) + m_10)  # maybe mad(x)/median(x)
-	})
+    if(mean(x) < m_50) return(-Inf)
+    if(sd(x) == 0) return(-Inf)
+    sd(x)/(mean(x) + m_10)  # maybe mad(x)/median(x)
+  })
 
 ind = order(cv, decreasing = TRUE)[1:2000]
 
 mat = expr[ind, ]
 set.seed(123)
 res = ConsensusClusterPlus(mat, maxK = 6, 
-		clusterAlg = "hc", distance = "spearman", reps = 1000, verbose = TRUE)
+    clusterAlg = "hc", distance = "spearman", reps = 1000, verbose = TRUE)
 
 class = res[[4]]$consensusClass
 pdf(qq("expression_classification_rnaseq.pdf"), width = 10, height = 10)
 ha = HeatmapAnnotation(subtype = SAMPLE$type, class = class, 
-	col = list(subtype = SAMPLE_COLOR, class = structure(2:5, names = unique(class))))
+  col = list(subtype = SAMPLE_COLOR, class = structure(2:5, names = unique(class))))
 ht = Heatmap(mat, col = colorRamp2(quantile(mat, c(0, 0.5, 0.9)), c("blue", "white", "red")), 
-	top_annotation = ha, show_row_names = FALSE, cluster_columns = res[[4]]$consensusTree) +
-	Heatmap(gt[rownames(mat)], col = c("protein_coding" = "red", "others" = "grey"), 
-		show_row_names = FALSE, name = "type")
+  top_annotation = ha, show_row_names = FALSE, cluster_columns = res[[4]]$consensusTree) +
+  Heatmap(gt[rownames(mat)], col = c("protein_coding" = "red", "others" = "grey"), 
+    show_row_names = FALSE, name = "type")
 draw(ht)
 dev.off()
-
-

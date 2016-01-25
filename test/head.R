@@ -153,7 +153,7 @@ if(!exists("expression", envir = .GlobalEnv, inherits = FALSE)) {
 }
 if(!exists("txdb", envir = .GlobalEnv, inherits = FALSE)) {
     cat("load txdb...\n")
-    txdb = loadDb("/icgc/dkfzlsdf/analysis/B080/guz/gencode/gencode.v19.sqlite")
+    txdb = loadDb("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/data/gencode.v19.sqlite")
 }
 
 gt = extract_field_from_gencode(gencode_gtf_file, level = "gene", primary_key = "gene_id", field = "gene_type")

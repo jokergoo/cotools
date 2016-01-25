@@ -8,16 +8,16 @@ setwd("/home/guz/project/analysis/hipo16_new/figure_prepare/")
 
 pdf("general_methylation_distribution.pdf", width = 10, height = 10)
 global_methylation_distribution(sample_id = SAMPLE$id, annotation = SAMPLE$type, 
-	annotation_color = SAMPLE_COLOR, chromosome = chromosome)
+  annotation_color = SAMPLE_COLOR, chromosome = chromosome)
 global_methylation_distribution(sample_id = SAMPLE$id, annotation = SAMPLE$type, 
-	annotation_color = SAMPLE_COLOR, chromosome = chromosome, by_chr = TRUE)
+  annotation_color = SAMPLE_COLOR, chromosome = chromosome, by_chr = TRUE)
 dev.off()
 
 pdf("general_methylation_distribution_cgi.pdf", width = 10, height = 10)
 global_methylation_distribution(sample_id = SAMPLE$id, annotation = SAMPLE$type, 
-	annotation_color = SAMPLE_COLOR, chromosome = chromosome, background = GENOMIC_FEATURE_LIST$cgi, p = 0.01)
+  annotation_color = SAMPLE_COLOR, chromosome = chromosome, background = GENOMIC_FEATURE_LIST$cgi, p = 0.01)
 global_methylation_distribution(sample_id = SAMPLE$id, annotation = SAMPLE$type, 
-	annotation_color = SAMPLE_COLOR, chromosome = chromosome, by_chr = TRUE, background = GENOMIC_FEATURE_LIST$cgi, p = 0.01)
+  annotation_color = SAMPLE_COLOR, chromosome = chromosome, by_chr = TRUE, background = GENOMIC_FEATURE_LIST$cgi, p = 0.01)
 dev.off()
 
 
@@ -27,9 +27,9 @@ start(extended_cgi) = start(extended_cgi) - 2000
 end(extended_cgi) = end(extended_cgi) + 2000
 shore = setdiff(extended_cgi, GENOMIC_FEATURE_LIST$cgi)
 global_methylation_distribution(sample_id = SAMPLE$id, annotation = SAMPLE$type, 
-	annotation_color = SAMPLE_COLOR, chromosome = chromosome, background = shore, p = 0.01)
+  annotation_color = SAMPLE_COLOR, chromosome = chromosome, background = shore, p = 0.01)
 global_methylation_distribution(sample_id = SAMPLE$id, annotation = SAMPLE$type, 
-	annotation_color = SAMPLE_COLOR, chromosome = chromosome, by_chr = TRUE, background = shore, p = 0.01)
+  annotation_color = SAMPLE_COLOR, chromosome = chromosome, by_chr = TRUE, background = shore, p = 0.01)
 dev.off()
 
 pdf("general_methylation_distribution_neither_cgi_nor_shores.pdf", width = 10, height = 10)
@@ -38,9 +38,9 @@ chromInfo = chromInfo[chromInfo$chrom %in% chromosome, ]
 chromGr = GRanges(chromInfo$chrom, ranges = IRanges(rep(1, nrow(chromInfo)), chromInfo$length))
 complement = setdiff(chromGr, extended_cgi)
 global_methylation_distribution(sample_id = SAMPLE$id, annotation = SAMPLE$type, 
-	annotation_color = SAMPLE_COLOR, chromosome = chromosome, background = complement)
+  annotation_color = SAMPLE_COLOR, chromosome = chromosome, background = complement)
 global_methylation_distribution(sample_id = SAMPLE$id, annotation = SAMPLE$type, 
-	annotation_color = SAMPLE_COLOR, chromosome = chromosome, by_chr = TRUE, background = complement)
+  annotation_color = SAMPLE_COLOR, chromosome = chromosome, by_chr = TRUE, background = complement)
 dev.off()
 
 
@@ -50,8 +50,8 @@ gr_list = get_mean_methylation_in_genomic_features(SAMPLE$id, chromosome = chrom
 
 pdf("heatmap_diff_methylation_in_genomic_features.pdf", width = 16, height = 16)
 for(i in seq_along(gr_list)) {
-	heatmap_diff_methylation_in_genomic_features(gr_list[[i]], annotation = SAMPLE$type, 
-		annotation_color = SAMPLE_COLOR, title = names(gr_list)[i], txdb = txdb, gf_list = GENOMIC_FEATURE_LIST)
+  heatmap_diff_methylation_in_genomic_features(gr_list[[i]], annotation = SAMPLE$type, 
+    annotation_color = SAMPLE_COLOR, title = names(gr_list)[i], txdb = txdb, gf_list = GENOMIC_FEATURE_LIST)
 }
 dev.off()
 
@@ -67,7 +67,7 @@ gr_list_genome = get_mean_methylation_in_genomic_features(SAMPLE$id, chromosome 
 
 
 # res1 = genomic_regions_correlation(gr_genome, GENOMIC_FEATURE_LIST, chromosome = chromosome, 
-# 	background = gr_list_genome[[1]], nperm = 50, stat_fun = genomicCorr.sintersect)
+#   background = gr_list_genome[[1]], nperm = 50, stat_fun = genomicCorr.sintersect)
 
 
 ####################
@@ -81,7 +81,7 @@ shore_1kb_window = shore_1kb_window[width(shore_1kb_window) > 500]
 gr_list_shore = get_mean_methylation_in_genomic_features(SAMPLE$id, chromosome = chromosome, gf_list = list(shore_1kb_window = shore_1kb_window))
 
 # res2 = genomic_regions_correlation(gr_cgi, GENOMIC_FEATURE_LIST, chromosome = chromosome, 
-# 	background = gr_list_cgi[[1]], nperm = 50, stat_fun = genomicCorr.sintersect)
+#   background = gr_list_cgi[[1]], nperm = 50, stat_fun = genomicCorr.sintersect)
 
 genome_1kb_window = makeWindows(setdiff(chromGr, extended_cgi), w = 1000)
 genome_1kb_window = genome_1kb_window[width(genome_1kb_window) > 500]
@@ -92,17 +92,17 @@ save(gr_list_cgi, gr_list_shore, gr_list_genome, file = "/icgc/dkfzlsdf/analysis
 
 pdf("heatmap_diff_methylation_1kb_window.pdf", width = 14, height = 14)
 gr_diff_genome = heatmap_diff_methylation_in_genomic_features(gr_list_genome[[1]], annotation = SAMPLE$type, 
-		annotation_color = SAMPLE_COLOR, title = "genome 1kb window")
+    annotation_color = SAMPLE_COLOR, title = "genome 1kb window")
 gr_diff_cgi = heatmap_diff_methylation_in_genomic_features(gr_list_cgi[[1]], annotation = SAMPLE$type, 
-		annotation_color = SAMPLE_COLOR, title = "cgi 1kb window")
+    annotation_color = SAMPLE_COLOR, title = "cgi 1kb window")
 gr_diff_shore = heatmap_diff_methylation_in_genomic_features(gr_list_shore[[1]], annotation = SAMPLE$type, 
-		annotation_color = SAMPLE_COLOR, title = "shore 1kb window")
+    annotation_color = SAMPLE_COLOR, title = "shore 1kb window")
 dev.off()
 
 
 MR_list = list(genome_1kb_window = gr_list_genome[[1]],
-	           cgi_1kb_window = gr_list_cgi[[1]],
-	           shore_1kb_window = gr_list_shore[[1]])
+             cgi_1kb_window = gr_list_cgi[[1]],
+             shore_1kb_window = gr_list_shore[[1]])
 res = genomic_regions_correlation(MR_list, GENOMIC_FEATURE_LIST[c("gene", "intron", "intergenic", "repeats_SINE", "repeats_LINE", "dnase", "exon", "tfbs", "tss_2k", "enhancer")], chromosome = chromosome, nperm = 2)
 pdf(qq("genome_1kb_window_correlation.pdf"), width = 6, height = 6)
 ht = Heatmap(res$stat, name = "jaccard", column_title = qq("jaccard coefficient"), cluster_columns = FALSE)
@@ -137,7 +137,7 @@ anno = ifelse(gr$overlap_to_shore > 0, ifelse(gr$overlap_to_cgi > 1 - gr$overlap
 
 ha = HeatmapAnnotation(subtype = SAMPLE$type, col = list("subtype" = SAMPLE_COLOR))
 ht = Heatmap(mat, name = "methylation", col = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red")), top_annotation = ha, split = anno) + 
-	Heatmap(anno, name = "anno", col = c("CGI" = "orange", "Shore" = "green", "Others" = "blue"))
+  Heatmap(anno, name = "anno", col = c("CGI" = "orange", "Shore" = "green", "Others" = "blue"))
 
 
 pdf("methylation_classification_wgbs.pdf", width = 14, height = 14)
@@ -206,22 +206,22 @@ mat = mat[, colnames(mat) != "ncpg"]
 
 set.seed(12345)
 get_class = function(mat) {
-	od = order(rowVars(mat), decreasing = TRUE)[1:round(nrow(mat)*0.2)]
-	mat2 = mat[od, ]
+  od = order(rowVars(mat), decreasing = TRUE)[1:round(nrow(mat)*0.2)]
+  mat2 = mat[od, ]
 
-	ct_cgi = cor_cols(t(mat2), abs_cutoff = 0.6, mc = 2)
+  ct_cgi = cor_cols(t(mat2), abs_cutoff = 0.6, mc = 2)
 
-	ind = which(ct_cgi[, "0.6"] >= 500)
-	mat2 = mat2[ind, ]
-	if(nrow(mat2) > 5000) {
-		l = sample(seq_len(nrow(mat2)), 5000)
-	} else {
-		l = rep(TRUE, nrow(mat2))
-	}
-	res = ConsensusClusterPlus(mat2[l, ], maxK = 4, 
-		clusterAlg = "km", distance = "euclidean", reps = 1000, verbose = TRUE)
+  ind = which(ct_cgi[, "0.6"] >= 500)
+  mat2 = mat2[ind, ]
+  if(nrow(mat2) > 5000) {
+    l = sample(seq_len(nrow(mat2)), 5000)
+  } else {
+    l = rep(TRUE, nrow(mat2))
+  }
+  res = ConsensusClusterPlus(mat2[l, ], maxK = 4, 
+    clusterAlg = "km", distance = "euclidean", reps = 1000, verbose = TRUE)
 
-	list(class = lapply(res[-1], function(x) x$consensusClass), row_index = rownames(mat2))
+  list(class = lapply(res[-1], function(x) x$consensusClass), row_index = rownames(mat2))
 }
 
 gr = gr_list_cgi[[1]]
@@ -255,18 +255,18 @@ m = NULL
 type = NULL
 class2 = NULL
 for(i in unique(class)) {
-	dend = as.dendrogram(hclust(dist(t(mat[row_index, class == i]))))
-	dend = stats:::reorder.dendrogram(dend, colMeans(mat[row_index, class == i]))
-	col_order = order.dendrogram(dend)
-	m = cbind(m, mat[row_index, class == i][, col_order])
-	type = c(type, SAMPLE$type[class == i][col_order])
-	class2 = c(class2, class[class == i][col_order])
+  dend = as.dendrogram(hclust(dist(t(mat[row_index, class == i]))))
+  dend = stats:::reorder.dendrogram(dend, colMeans(mat[row_index, class == i]))
+  col_order = order.dendrogram(dend)
+  m = cbind(m, mat[row_index, class == i][, col_order])
+  type = c(type, SAMPLE$type[class == i][col_order])
+  class2 = c(class2, class[class == i][col_order])
 }
 ha = HeatmapAnnotation(subtype = type, consensusCL = class2, 
-	col = list("subtype" = SAMPLE_COLOR, consensusCL = structure(2:5, names = unique(class2))))
+  col = list("subtype" = SAMPLE_COLOR, consensusCL = structure(2:5, names = unique(class2))))
 ht = Heatmap(m, name = "methylation", col = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red")), show_row_names = FALSE,
-	top_annotation = ha, split = anno, cluster_columns = FALSE, column_title = qq("@{n} 1kb windows")) + 
-	Heatmap(anno, name = "anno", col = c("CGI" = "orange", "Shore" = "green", "Others" = "blue"))
+  top_annotation = ha, split = anno, cluster_columns = FALSE, column_title = qq("@{n} 1kb windows")) + 
+  Heatmap(anno, name = "anno", col = c("CGI" = "orange", "Shore" = "green", "Others" = "blue"))
 
 
 pdf("methylation_classification_wgbs_cgi.pdf", width = 14, height = 14)
@@ -279,9 +279,9 @@ dev.off()
 
 ind = order(rowVars(mat), decreasing = TRUE)[1:5000]
 ha = HeatmapAnnotation(subtype = SAMPLE$type, 
-	col = list("subtype" = SAMPLE_COLOR))
+  col = list("subtype" = SAMPLE_COLOR))
 ht = Heatmap(mat[ind, ], name = "methylation", col = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red")), show_row_names = FALSE,
-	top_annotation = ha, split = anno, cluster_columns = TRUE)
+  top_annotation = ha, split = anno, cluster_columns = TRUE)
 
 
 pdf("methylation_classification_wgbs_top_5k_var.pdf", width = 14, height = 14)
@@ -295,80 +295,80 @@ dev.off()
 
 
 methylation_subtype_classfication = function(gr, p, corr, k, name) {
-	gr_1kb_window = makeWindows(gr, w = 1000, short.keep = TRUE)
-	gr_1kb_window = gr_1kb_window[width(gr_1kb_window) > 500]
-	gr_list_cgi = get_mean_methylation_in_genomic_features(SAMPLE$id, chromosome = chromosome, gf_list = list(gr_1kb_window = gr_1kb_window))
+  gr_1kb_window = makeWindows(gr, w = 1000, short.keep = TRUE)
+  gr_1kb_window = gr_1kb_window[width(gr_1kb_window) > 500]
+  gr_list_cgi = get_mean_methylation_in_genomic_features(SAMPLE$id, chromosome = chromosome, gf_list = list(gr_1kb_window = gr_1kb_window))
 
-	mat = as.matrix(mcols(gr_list_cgi[[1]])); rownames(mat) = seq_len(nrow(mat))
-	mat = mat[, colnames(mat) != "ncpg"]
+  mat = as.matrix(mcols(gr_list_cgi[[1]])); rownames(mat) = seq_len(nrow(mat))
+  mat = mat[, colnames(mat) != "ncpg"]
 
-	set.seed(12345)
-	get_class = function(mat, p, corr, k) {
-		od = order(rowVars(mat), decreasing = TRUE)[1:round(nrow(mat)*p)]
-		mat2 = mat[od, ]
+  set.seed(12345)
+  get_class = function(mat, p, corr, k) {
+    od = order(rowVars(mat), decreasing = TRUE)[1:round(nrow(mat)*p)]
+    mat2 = mat[od, ]
 
-		ct_cgi = cor_cols(t(mat2), abs_cutoff = corr, mc = 2)
+    ct_cgi = cor_cols(t(mat2), abs_cutoff = corr, mc = 2)
 
-		ind = which(ct_cgi[, as.character(corr)] >= k)
-		mat2 = mat2[ind, ]
-		if(nrow(mat2) > 5000) {
-			l = sample(seq_len(nrow(mat2)), 5000)
-		} else {
-			l = rep(TRUE, nrow(mat2))
-		}
-		res = ConsensusClusterPlus(mat2[l, ], maxK = 4, 
-			clusterAlg = "km", distance = "euclidean", reps = 1000, verbose = TRUE)
+    ind = which(ct_cgi[, as.character(corr)] >= k)
+    mat2 = mat2[ind, ]
+    if(nrow(mat2) > 5000) {
+      l = sample(seq_len(nrow(mat2)), 5000)
+    } else {
+      l = rep(TRUE, nrow(mat2))
+    }
+    res = ConsensusClusterPlus(mat2[l, ], maxK = 4, 
+      clusterAlg = "km", distance = "euclidean", reps = 1000, verbose = TRUE)
 
-		list(class = lapply(res[-1], function(x) x$consensusClass), row_index = rownames(mat2))
-	}
+    list(class = lapply(res[-1], function(x) x$consensusClass), row_index = rownames(mat2))
+  }
 
-	gr = gr_list_cgi[[1]]
-	gr2 = annotate_to_genomic_features(gr, list(GENOMIC_FEATURE_LIST$cgi, extended_cgi), name = c("cgi", "shore"))
-	anno = ifelse(gr2$overlap_to_shore > 0, ifelse(gr2$overlap_to_cgi > 1 - gr2$overlap_to_shore, "CGI", "Shore"), "Others")
+  gr = gr_list_cgi[[1]]
+  gr2 = annotate_to_genomic_features(gr, list(GENOMIC_FEATURE_LIST$cgi, extended_cgi), name = c("cgi", "shore"))
+  anno = ifelse(gr2$overlap_to_shore > 0, ifelse(gr2$overlap_to_cgi > 1 - gr2$overlap_to_shore, "CGI", "Shore"), "Others")
 
-	cl = get_class(mat, p = p, corr = corr, k = k)
-	class = cl$class[[1]]
-	row_index = cl$row_index
+  cl = get_class(mat, p = p, corr = corr, k = k)
+  class = cl$class[[1]]
+  row_index = cl$row_index
 
-	tb = table(class); i = as.numeric(names(tb)[which.max(tb)])
-	cl = get_class(mat[, class == i], p = p, corr = corr, k = k)
-	class[class == i] = cl$class[[1]] + 2
-	row_index = union(row_index, cl$row_index)
+  tb = table(class); i = as.numeric(names(tb)[which.max(tb)])
+  cl = get_class(mat[, class == i], p = p, corr = corr, k = k)
+  class[class == i] = cl$class[[1]] + 2
+  row_index = union(row_index, cl$row_index)
 
-	tb = table(class); i = as.numeric(names(tb)[which.max(tb)])
-	cl = get_class(mat[, class == i], p = p, corr = corr, k = k)
-	class[class == i] = cl$class[[1]] + 4
-	row_index = union(row_index, cl$row_index)
+  tb = table(class); i = as.numeric(names(tb)[which.max(tb)])
+  cl = get_class(mat[, class == i], p = p, corr = corr, k = k)
+  class[class == i] = cl$class[[1]] + 4
+  row_index = union(row_index, cl$row_index)
 
-	n = length(row_index)
-	if(length(row_index) > 5000) row_index = sample(row_index, 5000)
+  n = length(row_index)
+  if(length(row_index) > 5000) row_index = sample(row_index, 5000)
 
-	gr = gr_list_cgi[[1]]
-	gr2 = annotate_to_genomic_features(gr[as.numeric(row_index)], list(GENOMIC_FEATURE_LIST$cgi, extended_cgi), name = c("cgi", "shore"))
-	anno = ifelse(gr2$overlap_to_shore > 0, ifelse(gr2$overlap_to_cgi > 1 - gr2$overlap_to_shore, "CGI", "Shore"), "Others")
-
-
-	m = NULL
-	type = NULL
-	class2 = NULL
-	for(i in unique(class)) {
-		dend = as.dendrogram(hclust(dist(t(mat[row_index, class == i]))))
-		dend = stats:::reorder.dendrogram(dend, colMeans(mat[row_index, class == i]))
-		col_order = order.dendrogram(dend)
-		m = cbind(m, mat[row_index, class == i][, col_order])
-		type = c(type, SAMPLE$type[class == i][col_order])
-		class2 = c(class2, class[class == i][col_order])
-	}
-	ha = HeatmapAnnotation(subtype = type, consensusCL = class2, 
-		col = list("subtype" = SAMPLE_COLOR, consensusCL = structure(2:5, names = unique(class2))))
-	ht = Heatmap(m, name = "methylation", col = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red")), show_row_names = FALSE,
-		top_annotation = ha, split = anno, cluster_columns = FALSE, column_title = qq("@{n} 1kb windows")) + 
-		Heatmap(anno, name = "anno", col = c("CGI" = "orange", "Shore" = "green", "Others" = "blue"))
+  gr = gr_list_cgi[[1]]
+  gr2 = annotate_to_genomic_features(gr[as.numeric(row_index)], list(GENOMIC_FEATURE_LIST$cgi, extended_cgi), name = c("cgi", "shore"))
+  anno = ifelse(gr2$overlap_to_shore > 0, ifelse(gr2$overlap_to_cgi > 1 - gr2$overlap_to_shore, "CGI", "Shore"), "Others")
 
 
-	pdf(qq("methylation_classification_wgbs_@{name}.pdf"), width = 14, height = 14)
-	draw(ht)
-	dev.off()
+  m = NULL
+  type = NULL
+  class2 = NULL
+  for(i in unique(class)) {
+    dend = as.dendrogram(hclust(dist(t(mat[row_index, class == i]))))
+    dend = stats:::reorder.dendrogram(dend, colMeans(mat[row_index, class == i]))
+    col_order = order.dendrogram(dend)
+    m = cbind(m, mat[row_index, class == i][, col_order])
+    type = c(type, SAMPLE$type[class == i][col_order])
+    class2 = c(class2, class[class == i][col_order])
+  }
+  ha = HeatmapAnnotation(subtype = type, consensusCL = class2, 
+    col = list("subtype" = SAMPLE_COLOR, consensusCL = structure(2:5, names = unique(class2))))
+  ht = Heatmap(m, name = "methylation", col = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red")), show_row_names = FALSE,
+    top_annotation = ha, split = anno, cluster_columns = FALSE, column_title = qq("@{n} 1kb windows")) + 
+    Heatmap(anno, name = "anno", col = c("CGI" = "orange", "Shore" = "green", "Others" = "blue"))
+
+
+  pdf(qq("methylation_classification_wgbs_@{name}.pdf"), width = 14, height = 14)
+  draw(ht)
+  dev.off()
 }
 
 

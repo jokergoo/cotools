@@ -154,8 +154,6 @@ chord_diagram = function(mat, max_mat = mat, subtype1, subtype2) {
 	text(-1, 1, qq("state\nin @{subtype2}"), adj = c(0, 1), cex = 1.5)
 	text(1, -1, qq("state\nin @{subtype1}"), adj = c(1, 0), cex = 1.5)
 
-	by = sum(max_mat)/360
-	by = 
 	for(sn in get.all.sector.index()) {
 		if(abs(get.cell.meta.data("cell.start.degree", sector.index = sn) - get.cell.meta.data("cell.end.degree", sector.index = sn)) > 3) {
 			circos.text(get.cell.meta.data("xcenter", sector.index = sn, track.index = 2), get.cell.meta.data("ycenter", sector.index = sn, track.index = 2), 
