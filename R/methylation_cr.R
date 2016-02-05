@@ -329,28 +329,33 @@ filter_correlated_regions = function(chromosome = paste0("chr", c(1:22, "X")), t
 	cr2
 }
 
-reduce_cr = function(cr, expr, txdb, max_gap = 1000) {
+# pos_CR and neg_CR are reduced separatedly
+reduce_cr = function(cr, expr, txdb, max_gap = 1000, gap = 1.0) {
 
 	sample_id = attr(cr, "sample_id")
 	cor_method = attr(cr, "cor_method")
-	raw_meth = attr(cr2, "raw_meth")
+	raw_meth = attr(cr, "raw_meth")
 
 	if(raw_meth) warning("only smoothed meth is supported")
 
+	qqcat("extracting gene and tx models.\n")
 	gene = genes(txdb)
 	tx_list = transcriptsBy(txdb, by = "gene")
 
 	reduce_cr_by_gene = function(cr, e, max_gap = 1000) {
 		if(length(cr) == 0) return(GRanges())
-		gr = reduce(cr, min.gapwidth = max_gap, with.revmap = TRUE)
-		n = sapply(mcols(gr)[, 1], function(ind) sum(cr$n[ind]))
-		mat1 = as.matrix(mcols(cr)[, paste0("mean_meth_", sample_id)])
-		mat = lapply(mcols(gr)[, 1], function(ind) colMeans(mat1[ind, , drop =FALSE]))
-		mat = do.call("rbind", mat)
-		colnames(mat) = paste0("mean_meth_", sample_id)
-		corr = apply(mat, 1, function(x) cor(x, e, method = cor_method))
-		mcols(gr) = cbind(n, mat, corr)
-		gr
+		n = cr$n
+		meth_mat = as.matrix(mcols(cr)[, paste0("mean_meth_", sample_id)]) * n
+
+		mcols(cr) = cbind(n = n, meth_mat)
+		gr = reduce2(cr, max_gap = max_gap, gap = gap)
+
+		n = gr$n
+		meth_mat = as.matrix(mcols(gr)[, paste0("mean_meth_", sample_id)]) / n
+	
+		corr = apply(meth_mat, 1, function(x) cor(x, e, method = cor_method))
+		mcols(gr) = cbind(n = n, meth_mat, corr = corr)
+		return(gr)
 	}
 
 	cr_list = split(cr, cr$gene_id)
