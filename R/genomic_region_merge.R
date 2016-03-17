@@ -39,28 +39,59 @@ logical_segment = function(l) {
 	return(data.frame(start_index = start, end_index = end))
 }
 
-
+# == title
+# define bp
+#
+# == param
+# -x integer
+#
 bp = function(x) {
 	x = as.integer(x)
 	class(x) = c(class(x), "bp")
 	x
 }
 
+# == title
+# define kb
+#
+# == param
+# -x integer
+#
 kb = function(x) {
 	bp(x*1000)
 }
 
+# == title
+# define mb
+#
+# == param
+# -x integer
+#
 mb = function(x) {
 	bp(x*1000000)
 }
 
-print.bp = function(x) {
+# == title
+# print bp class objects
+#
+# == param
+# -x `bp` class object
+# -... other arguments
+# 
+print.bp = function(x, ...) {
 	x = paste0(x, "bp")
 	print(x, quote = FALSE)
 }
 
 
-# value will be sum up
+# == title
+# reduce based on the width of the interval
+#
+# == param
+# -gr genomic regions
+# -max_gap max gap
+# -gap if it is a value less than 1, it is the ratio of the interval
+#
 reduce2 = function(gr, max_gap = 1000, gap = bp(1000)) {
 	if(length(gr) %in% c(0, 1)) {
 		return(gr)

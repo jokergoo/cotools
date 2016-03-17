@@ -3,18 +3,18 @@
 # scatter plot between methylation and expression
 #
 # == param
-# -CR correlated regions from `correlated_regions`
+# -cr correlated regions from `correlated_regions`
 # -expr expression
-# -gene_symbol_column gene symbol column 
+# -gi gene id
+# -text_column
 # -xlab xlab
 # -ylab ylab
-# -annotation annotation
-# -annotation_color colors for annotation
 #
 cr_scatterplot_me = function(cr, expr, gi = NULL, text_column = NULL,
-	xlab = "Methylation", ylab = "Expression", annotation_color = NULL) {
+	xlab = "Methylation", ylab = "Expression") {
 	
 	annotation = attr(cr, "factor")
+	annotation_color = attr(cr, "col")
 	sample_id = attr(cr, "sample_id")
 
 	if(!is.null(gi)) {
@@ -91,7 +91,15 @@ scatterplot_with_boxplot = function(x, y, annotation = rep("unknown", length(x))
     legend("bottomleft", legend = levels(annotation), pch = 16, col = annotation_color[levels(annotation)])
     if(length(text_list)) {
 	    text_list_name = names(text_list)
-	    text(0, 1, qq("@{text_list_name} = @{text_list}\n"), adj = c(0, 1))
+	    text_list = as.character(text_list)
+	    for(i in seq_along(text_list)) {
+	    	if(!is.na(suppressWarnings(as.numeric(text_list[i])))) {
+	    		if(nchar(text_list[i]) > 5) {
+	    			text_list[i] = sprintf("%.2e", as.numeric(text_list[i]))
+	    		}
+	    	}
+	    }
+	    text(0, 1, qq("@{text_list_name} = @{text_list}\n"), adj = c(0, 1))	
 	}
 
     par(mar = c(5, 0, 0, 5))

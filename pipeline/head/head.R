@@ -2,54 +2,54 @@
 # universal
 # 'normal' is a hard coded type
 sample_text = 
-"id   type
-AK015    IDH
-AK041    IDH
-AK066    IDH
-AK068    IDH
-AK076    IDH
-AK085    IDH
-AK102    IDH
-AK103    IDH
-AK124    IDH
-AK199    IDH
-AK213    IDH
-AK231    IDH
-AK030    MES
-AK055    MES
-AK071    MES
-AK072    MES
-AK091    MES
-AK139    MES
-AK153    MES
-AK185    MES
-AK195    MES
-AK227    MES
-AK236    MES
-AK003    RTK_I
-AK017    RTK_I
-AK049    RTK_I
-AK051    RTK_I
-AK142    RTK_I
-AK149    RTK_I
-AK156    RTK_I
-AK165    RTK_I
-AK173    RTK_I
-AK183    RTK_I
-AK203    RTK_I
-AK217    RTK_I
-AK053    RTK_II
-AK074    RTK_II
-AK088    RTK_II
-AK089    RTK_II
-AK098    RTK_II
-AK100    RTK_II
-AK132    RTK_II
-AK158    RTK_II
-AK167    RTK_II
-AK178    RTK_II
-AK188    RTK_II
-AK216    RTK_II
+"id   type   age
+AK015    IDH  28
+AK041    IDH  47
+AK066    IDH  34
+AK068    IDH  59
+AK076    IDH  47
+AK085    IDH  38
+AK102    IDH  49
+AK103    IDH  40
+AK124    IDH  32
+AK199    IDH  33
+AK213    IDH  48
+AK231    IDH  56
+AK030    MES  66
+AK055    MES  55
+AK071    MES  49
+AK091    MES  58
+AK139    MES  46
+AK153    MES  63
+AK185    MES  36
+AK188    MES  55
+AK195    MES  58
+AK227    MES  55
+AK236    MES  44
+AK003    RTK_I  44
+AK017    RTK_I  19
+AK049    RTK_I  73
+AK051    RTK_I  55
+AK142    RTK_I  49
+AK149    RTK_I  73
+AK156    RTK_I  63
+AK165    RTK_I  36
+AK173    RTK_I  59
+AK183    RTK_I  49
+AK203    RTK_I  20
+AK217    RTK_I  61
+AK053    RTK_II  62
+AK072    RTK_II  51
+AK074    RTK_II  40
+AK088    RTK_II  63
+AK089    RTK_II  62
+AK098    RTK_II  36
+AK100    RTK_II  38
+AK132    RTK_II  60
+AK158    RTK_II  59
+AK167    RTK_II  69
+AK178    RTK_II  57
+AK216    RTK_II  61
 #normal_occipital     normal
 #normal_parietal     normal
 #normal_temporal     normal
@@ -64,6 +64,7 @@ rownames(SAMPLE) = SAMPLE$id
 SAMPLE_COLOR = brewer.pal(4, "Set1")
 names(SAMPLE_COLOR) = c("IDH", "MES", "RTK_I", "RTK_II")
 
+AGE_COL_FUN = colorRamp2(c(20, 70), c("black", "white"))
 
 ############################################################
 #
@@ -167,10 +168,19 @@ SAMPLE = SAMPLE[SAMPLE$type != "normal", , drop = FALSE]
 
 expr = expr[l, SAMPLE$id, drop = FALSE]
 
+genes = genes(txdb)
+chr = as.vector(seqnames(genes))
+names(chr) = names(genes)
 
 chromosome = paste0("chr", c(1:22))
+expr = expr[chr[rownames(expr)] %in% chromosome, ]
 
 genome = "hg19"
+
+output_dir = "/home/guz/project/analysis/hipo16_new/figure_prepare/"
+
+dir.create(output_dir, showWarnings = FALSE)
+dir.create(paste0(output_dir, "/gviz"), showWarnings = FALSE)
 
 if(!exists("GENOMIC_FEATURE_LIST", envir = .GlobalEnv)) {
     # annotate to other regions
@@ -186,7 +196,7 @@ if(!exists("GENOMIC_FEATURE_LIST", envir = .GlobalEnv)) {
         enhancer               = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/enhancer.bed"),
         repeats_LINE           = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/repeats_LINE.bed"),
         repeats_SINE           = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/repeats_SINE.bed"),
-        tfbs                   = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/tfbs_cluster.bed")        # too large for memory
+        tfbs                   = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/encode_uniform_tfbs_merged_1kb.bed")        # too large for memory
     )
     cat("loading genomic features...\n")
     GENOMIC_FEATURE_LIST = lapply(GENOMIC_FEATURE_LIST, function(x) {
@@ -202,11 +212,13 @@ if(!exists("GENOMIC_FEATURE_LIST", envir = .GlobalEnv)) {
 
 get_hm_sample = function(hm) {
     hm_sample = dir("/icgc/dkfzlsdf/analysis/hipo/hipo_016/chipseq_gbm/", pattern = qq("AK.*@{hm}"))
-    gsub(qq("_@{hm}"), "", hm_sample)
+    sample_id = gsub(qq("_@{hm}"), "", hm_sample)
+    intersect(SAMPLE$id, sample_id)
 }
 
-get_hm = function(hm, sid) {
-    df = read.table(qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/chipseq_gbm/@{sid}_@{hm}/sicer/@{sid}_@{hm}.mkdup-W200-G200-islands-summary-FDR0.01"))
+get_hm = function(sid, histone_mark) {
+    df = read.table(qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/chipseq_gbm/@{sid}_@{histone_mark}/sicer/@{sid}_@{histone_mark}.mkdup-W200-G200-islands-summary-FDR0.01"), stringsAsFactors = FALSE)
+    df = df[df[[1]] %in% chromosome]
     gr = GRanges(seqnames = df[[1]], ranges = IRanges(df[[2]], df[[3]]), density = df[[7]])
 }
 

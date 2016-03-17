@@ -1,4 +1,14 @@
- 
+
+# == title
+# chord diagram for chromatin states transistion
+#
+# == param
+# -mat the transition matrix
+# -max_mat if there are several matrix, set it to the matrix with maximum sum
+# -cate1 name of row states
+# -cate2 name fo column states
+# -... pass to `circlize::chordDiagram`
+#
 chromatin_states_transition_chord_diagram = function(mat, max_mat = mat, cate1, cate2, ...) {
 
 	par(xpd = NA)

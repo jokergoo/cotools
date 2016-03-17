@@ -1,4 +1,11 @@
 
+# == title
+# enrichment of cr on tss
+#
+# == param
+# -cr cr
+# -txdb txdb
+#
 cr_enriched_at_tss = function(cr, txdb) {
 	
 	gene = genes(txdb)
@@ -71,6 +78,22 @@ cr_enriched_at_tss = function(cr, txdb) {
 	legend("topright", lty = 1, col = c("green", "red"), legend = c("neg_cr", "pos_cr"))
 }
 
+# == title
+# Enriched heatmap
+# 
+# == param
+# -cr cr
+# -cgi CpG Island
+# -txdb txdb
+# -expr expr
+# -hm_list a list of histome marks
+# -hm_name names for hm
+# -on tss or body
+# -by gene or tx
+# -hm_cor_p_cutoff cutoff for the correlation between hm and expression
+# -show_expr whether show heatmap of expression
+# -... pass to
+#
 enriched_heatmap_list_on_gene = function(cr, cgi, txdb, expr, hm_list = NULL, hm_name = NULL, on = "tss", by = "gene", 
 	hm_cor_p_cutoff = 0.05, show_expr = TRUE, ...) {
 
@@ -129,7 +152,7 @@ enriched_heatmap_list_on_gene = function(cr, cgi, txdb, expr, hm_list = NULL, hm
 		sample = names(hm_list)
 		arr = lt[[1]]
 		# detect regions that histone marks correlate to expression
-		expr2 = expr[target$gene_id, sample]
+		expr2 = expr[target$gene_id, intersect(colnames(expr), sample)]
 		cor_mat = matrix(nr = nrow(expr2), nc = ncol(mat))
 		cor_p_mat = cor_mat
 
@@ -241,6 +264,19 @@ enriched_heatmap_list_on_gene = function(cr, cgi, txdb, expr, hm_list = NULL, hm
 }
 
 
+# == title
+# Enriched heatmap on TSS-CGI
+#
+# == param
+# -cr cr
+# -cgi CpG Islands
+# -txdb txdb
+# -expr expr
+# -hm_list hm_list
+# -hm_name hm_name
+# -by by
+# -... pass to
+#
 enriched_heatmap_list_on_tss_cgi = function(cr, cgi, txdb, expr, hm_list = NULL, hm_name = NULL, by = "gene", ...) {
 
 	sample_id = attr(cr, "sample_id")
@@ -359,7 +395,6 @@ enriched_heatmap_list_on_tss_cgi = function(cr, cgi, txdb, expr, hm_list = NULL,
 	})
 }
 
-copyAttr = EnrichedHeatmap:::copyAttr
 
 enrich_with_histone_mark = function(target, hm_list, sample_id, factor, target_ratio = 0.1, return_arr = FALSE, 
 	value_column = "density", extend = 5000, mean_mode = "w0", w = 50, ...) {

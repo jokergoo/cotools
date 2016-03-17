@@ -44,7 +44,7 @@
 # -stat_random_sd standard deviation in random shuffling
 #
 genomic_regions_correlation = function(gr_list_1, gr_list_2, background = NULL,
-	chromosome = paste0("chr", c(1:22, "X")), species = "hg19",
+	chromosome = paste0("chr", 1:22), species = "hg19",
 	nperm = 1000, mc.cores = 1, stat_fun = genomicCorr.jaccard, ...) {
 	
 	## check input
@@ -131,51 +131,65 @@ genomic_regions_correlation = function(gr_list_1, gr_list_2, background = NULL,
 			stat[j, i] = do.call("stat_fun", list(gr_list_1[[i]], gr_list_2[[j]], ...))
 		}
 
-		# random shuffle gr_list_1
-		# cache gr_list_1
-		gr_list_1_df = as.data.frame(gr_list_1[[i]])[1:3]
-		gr_list_1_df_tmp = tempfile()
-		write.table(gr_list_1_df, file = gr_list_1_df_tmp, sep = "\t", row.names = FALSE, col.names= FALSE, quote = FALSE)
+		if(nperm > 1) {
+			# random shuffle gr_list_1
+			# cache gr_list_1
+			gr_list_1_df = as.data.frame(gr_list_1[[i]])[1:3]
+			gr_list_1_df_tmp = tempfile()
+			write.table(gr_list_1_df, file = gr_list_1_df_tmp, sep = "\t", row.names = FALSE, col.names= FALSE, quote = FALSE)
 
-		res = mclapply(seq_len(nperm), mc.cores = mc.cores, function(k) {
-			
-			if(is.null(background)) {
-				gr_random = systemdf(qq("bedtools shuffle -i @{gr_list_1_df_tmp} -g @{chr_len_df_tmp}"))
-			} else {
-				gr_random = systemdf(qq("bedtools shuffle -i @{gr_list_1_df_tmp} -g @{chr_len_df_tmp} -incl @{background_df_tmp}"))
-			}
-
-			gr_random = GRanges(seqnames = gr_random[[1]], ranges = IRanges(gr_random[[2]], gr_random[[3]]))
-
-			# x contains stat for every gr_list_2
-			x = numeric(length(gr_list_2))
-			for(j in seq_along(gr_list_2)) {
+			res = mclapply(seq_len(nperm), mc.cores = mc.cores, function(k) {
 				
-				message(qq("calculating correlation between random_@{gr_name_1[i]} and @{gr_name_2[[j]]}, @{k}/@{nperm}"))
+				if(is.null(background)) {
+					gr_random = systemdf(qq("bedtools shuffle -i @{gr_list_1_df_tmp} -g @{chr_len_df_tmp}"))
+				} else {
+					gr_random = systemdf(qq("bedtools shuffle -i @{gr_list_1_df_tmp} -g @{chr_len_df_tmp} -incl @{background_df_tmp}"))
+				}
 
-				x[j] = do.call("stat_fun", list(gr_random, gr_list_2[[j]], ...))
+				gr_random = GRanges(seqnames = gr_random[[1]], ranges = IRanges(gr_random[[2]], gr_random[[3]]))
+
+				# x contains stat for every gr_list_2
+				x = numeric(length(gr_list_2))
+				for(j in seq_along(gr_list_2)) {
+					
+					message(qq("calculating correlation between random_@{gr_name_1[i]} and @{gr_name_2[[j]]}, @{k}/@{nperm}"))
+
+					x[j] = do.call("stat_fun", list(gr_random, gr_list_2[[j]], ...))
+				}
+
+				return(x)
+			})
+
+			# `res` is a list, convert to a matrix
+			for(k in seq_along(res)) {
+				stat_random[, k] = res[[k]]
 			}
 
-			return(x)
-		})
+			file.remove(gr_list_1_df_tmp)
 
-		# `res` is a list, convert to a matrix
-		for(k in seq_along(res)) {
-			stat_random[, k] = res[[k]]
+			stat_random_mean[, i] = rowMeans(stat_random)
+			stat_random_sd[, i] = rowSds(stat_random)
+
+			foldChange[, i] = stat[, i]/stat_random_mean[, i]
+			p[, i] = sapply(seq_len(length(gr_list_2)), function(i) sum(stat_random[i, ] > stat[i])/nperm)
+		} else {
+			stat_random_mean[, i]  = NA
+			stat_random_sd[, i] = NA
+			foldChange[, i] = NA
+			p[, i] = NA
 		}
-
-		file.remove(gr_list_1_df_tmp)
-
-		stat_random_mean[, i] = rowMeans(stat_random)
-		stat_random_sd[, i] = rowSds(stat_random)
-		
-		foldChange[, i] = stat[, i]/stat_random_mean[, i]
-		p[, i] = sapply(seq_len(length(gr_list_2)), function(i) sum(stat_random[i, ] > stat[i])/nperm)
 	}
 
 	file.remove(chr_len_df_tmp)
 	if(!is.null(background)) {
 		file.remove(background_df_tmp)
+	}
+
+	if(nperm <= 1) {
+		foldChange = NULL
+		p = NULL
+		stat_random_mean = NULL
+		stat_random_sd = NULL
 	}
 
 	res = list(foldChange = foldChange, 

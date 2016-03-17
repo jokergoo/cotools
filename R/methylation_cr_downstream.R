@@ -1,5 +1,12 @@
 
-cr_qc = function(chromosome = paste0("chr", c(1:22, "X")), template) {
+# == title
+# QC on crs
+#
+# == param
+# -chromosome chromosome
+# -template template
+# 
+cr_qc = function(chromosome = paste0("chr", 1:22), template) {
 	
 	cutoff = c(0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7)
 	diameter = c(0, 0.1, 0.2, 0.3, 0.4)
@@ -64,7 +71,15 @@ cr_qc = function(chromosome = paste0("chr", c(1:22, "X")), template) {
 	return(invisible(list(n = n, w = w)))
 }
 
-cr_correlated_to_genomic_features = function(cr, gf_list, species = NULL) {
+# == title
+# enrichment between cr and genomic feature
+#
+# == param
+# -cr cr
+# -gf_list gf_list
+# -species species
+# 
+cr_overlap_to_genomic_features = function(cr, gf_list, species = NULL) {
 
 	neg_cr = cr[cr$corr < 0]
 	pos_cr = cr[cr$corr > 0]
@@ -114,67 +129,95 @@ cr_correlated_to_genomic_features = function(cr, gf_list, species = NULL) {
 	return(invisible(list(pct = pct_mat, overlap = overlap_mat)))
 }
 
-
-cr_hilbert = function(cr, template, txdb, chromosome = paste("chr", c(1:22, "X")), merge_chr = FALSE) {
+# == title
+# Hilbert curve visualization of CRs
+#
+# == param
+# -cr cr
+# -template template
+# -txdb txdb
+# -chromosome chromosome
+# -merge_chr whether merge chromsomes into one plot
+#
+cr_hilbert = function(cr, template, txdb, chromosome = paste0("chr", 1:22), merge_chr = TRUE) {
 
 	gene = genes(txdb)
 	
 	chr_len = read.chromInfo()$chr.len
 
-	if(missing(template)) {
+	if(!missing(cr)) {
 		cm = ColorMapping(levels = c("neg", "pos"), colors = c("darkgreen", "red"))
 		lgd = color_mapping_legend(cm, title = "type", plot = FALSE)
 		cr = cr[!is.na(cr$corr)]
 		if(merge_chr) {
 			hc = GenomicHilbertCurve(chr = chromosome, mode = "pixel", level = 10, title = "CR for all chromosomes", legend = lgd)
 		    hc_layer(hc, gene, col = "#F0F0FF")
-		    hc_layer(hc, cr, col = ifelse(cr$corr > 0, "red", "darkgreen"), mean_mode = "absolute", grid_line = 3, grid_line_col = "grey")
+		    hc_layer(hc, cr, col = ifelse(cr$corr > 0, "red", "darkgreen"), mean_mode = "absolute")
+		    hc_map(hc, add = TRUE, fill = NA, border = "grey")
 		    hc_map(hc, title = "map for all chromosomes")
 		} else {
-			pushViewport(viewport(layout = grid.layout(nr = 4, nc = 6)))
+			# grid.newpage()
+			# pushViewport(viewport(layout = grid.layout(nr = 4, nc = 6)))
 			for(i in seq_along(chromosome)) {
 			    chr = chromosome[i]
 			    cat(chr, "\n")
 			    cr_subset = cr[seqnames(cr) == chr]
 			    gene_subset = gene[seqnames(gene) == chr]
-			    pushViewport(viewport(layout.pos.row = ceiling(i/6), layout.pos.col = i - (ceiling(i/6)-1)*6))
-			    hc = HilbertCurve(s = 1, e = max(chr_len), mode = "pixel", level = 10, title = chr, newpage = FALSE)
+			    # pushViewport(viewport(layout.pos.row = ceiling(i/6), layout.pos.col = i - (ceiling(i/6)-1)*6))
+			    hc = HilbertCurve(s = 1, e = max(chr_len), mode = "pixel", level = 10, title = chr, legend = lgd)
 			    hc_layer(hc, ranges(reduce(gene_subset)), col = "#F0F0FF")
 			    hc_layer(hc, ranges(cr_subset), col = ifelse(cr_subset$corr > 0, "red", "darkgreen"), mean_mode = "absolute")
-			    upViewport()
+			    # upViewport()
 			}
-			upViewport()
+			# upViewport()
 		}
 	}
 
-	if(missing(cr)) {
+	if(!missing(template)) {
 		## all cr windows
 		col_fun = colorRamp2(c(-1, 0, 1), c("green", "white", "red"))
+		cm = ColorMapping(col_fun = col_fun)
+		lgd = color_mapping_legend(cm, title = "type", plot = FALSE)
 		if(merge_chr) {
 			cr = GRanges()
 			for(i in seq_along(chromosome)) {
+				chr = chromosome[i]
 				cr = c(cr, readRDS(qq(template)))
 			}
 			cr = cr[!is.na(cr$corr)]
-			hc = GenomicHilbertCurve(chr = chromosome, mode = "pixel", level = 10)
-		    hc_layer(hc, cr, col = col_fun(cr$corr), mean_mode = "absolute", grid_line = 3, grid_line_col = "grey")
+			hc = GenomicHilbertCurve(chr = chromosome, mode = "pixel", level = 10, title = "cr for all chromosomes", legend = lgd)
+		    hc_layer(hc, cr, col = col_fun(cr$corr), mean_mode = "absolute")
+		    hc_map(hc, add = TRUE, fill = NA, border = "grey")
 		   	hc_map(hc, title = "map for all chromosomes")
 		} else {
-			pushViewport(viewport(layout = grid.layout(nr = 4, nc = 6)))
+			# grid.newpage()
+			# pushViewport(viewport(layout = grid.layout(nr = 4, nc = 6)))
 			for(i in seq_along(chromosome)) {
 			    chr = chromosome[i]
 			    cat(chr, "\n")
 			    cr = readRDS(qq(template))
 			    cr = cr[!is.na(cr$corr)]
-			    pushViewport(viewport(layout.pos.row = ceiling(i/6), layout.pos.col = i - (ceiling(i/6)-1)*6))
-			    hc = HilbertCurve(s = 1, e = max(chr_len), mode = "pixel", level = 10, title = chr, newpage = FALSE)
+			    # pushViewport(viewport(layout.pos.row = ceiling(i/6), layout.pos.col = i - (ceiling(i/6)-1)*6))
+			    hc = HilbertCurve(s = 1, e = max(chr_len), mode = "pixel", level = 10, title = chr, legend = lgd)
 			    hc_layer(hc, ranges(cr), col = col_fun(cr$corr), mean_mode = "absolute")
-			    upViewport()
+			    # upViewport()
 			}
+			# upViewport()
 		}
 	}
 }
 
+# == title
+# compare methylation between smoothed and raw methylation data
+#
+# == param
+# -cr cr
+# -chr chromosome
+# -start start position
+# -end end position
+# -x cr with smoothed methylation
+# -x2 cr with raw methylation
+#
 compare_meth = function(cr, chr, start, end, x = NULL, x2 = NULL) {
 	
 	sample_id = attr(cr, "sample_id")
@@ -191,7 +234,7 @@ compare_meth = function(cr, chr, start, end, x = NULL, x2 = NULL) {
 	cov = methylation_hooks$coverage(row_index = ind, col_index = sample_id)
 	site = extract_sites(start, end, methylation_hooks$site(), index = FALSE)
 
-	par(mfrow = c(5 + !is.null(x) + !is.null(x2), 1), mar = c(1, 4, 1, 1))
+	par(mfrow = c(5 + (!is.null(x)) + (!is.null(x2)), 1), mar = c(1, 4, 1, 1))
 
 	matplot(site, meth, type = "l", col = col[factor], lty = 1, 
 	    ylab = "smoothed meth", xlab = NULL)

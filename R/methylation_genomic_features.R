@@ -1,12 +1,29 @@
 ### function for methylation analysis
 
 
+# == title
 # heatmap for mean methylation in genomic features and annotation to other genomic features
+#
+# == param
+# -gr object returned by `get_mean_methylation_in_genomic_features`
+# -annotation subtype of samples
+# -annotation_color colors of subtypes
+# -txdb A `GenomicFeatures::TcDb` object
+# -gf_list a list of genomic features which are used as row annotations
+# -gf_type how to overlap genomic features
+# -min_mean_range minimal range between mean value in subtypes
+# -cutoff if subtype information is provided, p-value for the oneway ANOVA test
+# -adj_method how to calculate adjusted p-values
+# -title title of the plot
+# -cluster_cols how to cluster columns
+# -ha heatmap annotations
+# -... pass to `ComplexHeatmap::Heatmap`
+# 
 heatmap_diff_methylation_in_genomic_features = function(gr, annotation, 
 	annotation_color = structure(seq_along(unique(annotation)), names = unique(annotation)), 
 	txdb = NULL, gf_list = NULL, gf_type = "percent", 
 	min_mean_range = 0.2, cutoff = 0.05, adj_method = "BH", title = NULL, 
-	cluster_cols = c("subgroup", "all", "none"), ...) {
+	cluster_cols = c("subgroup", "all", "none"), ha = NULL, ...) {
 	
 	# if(length(annotation) != ncol(mcols(gr))) {
 	# 	stop("Length of `annotation` should be equal to ncol of `mcols(gr)`\n")
@@ -85,8 +102,7 @@ heatmap_diff_methylation_in_genomic_features = function(gr, annotation,
 		cluster_cols = FALSE
 	}
 
-
-	ha = HeatmapAnnotation(df = data.frame(anno = annotation), col = list(anno = annotation_color))
+	if(is.null(ha))	ha = HeatmapAnnotation(df = data.frame(anno = annotation), col = list(anno = annotation_color))
 	ht_list = Heatmap(mat, col = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red")), top_annotation = ha,
 		cluster_columns = cluster_cols, show_row_dend = FALSE,
 		heatmap_legend_param = list(title = "methylation"), ...)
@@ -143,23 +159,19 @@ heatmap_diff_methylation_in_genomic_features = function(gr, annotation,
 # == title
 # calculate average methylation value in a list of regions
 #
-# == description
-# to accelerate calculation, index for CpG sites are first built
-#
 # == param
 # -sample_id  a list of sample IDs
+# -gf_list a list of genomic features in `GenomicRanges::GRanges` class
 # -average    whether to calcualte average methylation in a interval? if not,
 #             the function will randomly sample some CpG sites in the interval
 # -p if average is FALSE, the probability to pick cpg sites
-# -gf_list    a list of regions, each region is a data frame, at least four columns:
-#             chr, start, end, name
 # -chromosome chromosome name
 # -filter_fun filtering function on sites in each intersection
 #
 # == value
 # a list of ``GRanges`` objects.
 get_mean_methylation_in_genomic_features = function(sample_id, gf_list, average = TRUE, p = 0.001,
-	chromosome = paste0("chr", c(1:22, "X")),
+	chromosome = paste0("chr", 1:22),
 	filter_fun = function(s) length(s) >= 10 && any(diff(s) < 50)) {
 	
 	# initialize the mat_list

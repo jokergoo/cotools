@@ -1,11 +1,11 @@
 
 source("~/project/development/cotools/script/load_all.R")
-source("~/project/development/cotools/test/head.R")
+source("~/project/development/cotools/pipeline/head/head.R")
 
 cr_filtered = readRDS("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/rds/cr_filtered_fdr_0.005.rds")
 
 
-pdf("/home/guz/project/analysis/hipo16_new/figure_prepare/cr_meth_vs_expr_0.005.pdf", width = 8, height = 8)
+pdf(qq("@{output_dir}/cr_meth_vs_expr_0.005.pdf"), width = 8, height = 8)
 
 
 expr = log2(expr + 1)

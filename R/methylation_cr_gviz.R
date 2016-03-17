@@ -6,12 +6,16 @@
 # -gi gene id
 # -expe expression matrix
 # -txdb transcriptDb object
-# -neg_CR negative correlated regions
-# -pos_CR positive correlated regions
-# -bs_obj object
+# -gene_start start of gene
+# -gene_end end of the gene
+# -tx_list a list of tx
+# -species species
+# -gf_list a list of gf
+# -hm_list a list of hm
+# -symbol gene symbol
 #
 cr_gviz = function(cr, gi, expr, txdb, gene_start = NULL, gene_end = NULL, tx_list = NULL,
-	species = "hg19", gf_list = NULL, hm_list = NULL) {
+	species = "hg19", gf_list = NULL, hm_list = NULL, symbol = NULL) {
 
 	sample_id = attr(cr, "sample_id")
 	extend = attr(cr, "extend")
@@ -69,6 +73,7 @@ cr_gviz = function(cr, gi, expr, txdb, gene_start = NULL, gene_end = NULL, tx_li
 		cov_cutoff = cov_cutoff, min_dp = min_dp)
 
 	qqcat("add transcripts to givz tracks...\n")
+	options(Gviz.ucscUrl="http://genome-euro.ucsc.edu/cgi-bin/")
 	trackList = list()
 	trackList = pushTrackList(trackList, GenomeAxisTrack())
 	trackList = pushTrackList(trackList, IdeogramTrack(genome = species, chromosome = chr))
@@ -146,37 +151,42 @@ cr_gviz = function(cr, gi, expr, txdb, gene_start = NULL, gene_end = NULL, tx_li
 		})
 
 		hm_merged = GRanges()
-		for(i in seq_along(hm_list2)) hm_merged = c(hm_merged, hm_list2[[i]])
-		segments = as(coverage(hm_merged), "GRanges")
-		# covert to matrix
-		hm_mat = matrix(0, nrow = length(hm_list), ncol = length(segments))
-		rownames(hm_mat) = names(hm_list)
+		seqinfo(hm_merged) = seqinfo(hm_list[[1]])
 		for(i in seq_along(hm_list2)) {
-			mtch = as.matrix(findOverlaps(segments, hm_list2[[i]]))
-			hm_mat[i, mtch[, 1]] = hm_list2[[i]][mtch[, 2]]$density
+			if(length(hm_list2[[i]])) hm_merged = c(hm_merged, hm_list2[[i]])
 		}
-		segments = c(segments, GRanges(chr, ranges = IRanges(gene_end - 100, gene_end), score = 0))
-		
-		for(t in unique(factor)) {
-			mat = hm_mat[rownames(hm_mat) %in% sample_id[factor == t], , drop = FALSE]
-			mat = cbind(mat, rep(0, nrow(mat)))
-			mat[1, ncol(mat)] = max(hm_mat)
-			trackList = pushTrackList(trackList, DataTrack(name = t,
-										start = start(segments),
-										end = end(segments),
-										chromosome = seqnames(segments),
-										genome = species,
-										data = mat,
-										type = "heatmap",
-										showSampleNames = TRUE,
-										gradient = c("white", "purple"),
-										size = 2,
-										col = NA))
+		if(length(hm_merged) > 0) {
+			segments = as(coverage(hm_merged), "GRanges")
+			# covert to matrix
+			hm_mat = matrix(0, nrow = length(hm_list), ncol = length(segments))
+			rownames(hm_mat) = names(hm_list)
+			for(i in seq_along(hm_list2)) {
+				mtch = as.matrix(findOverlaps(segments, hm_list2[[i]]))
+				hm_mat[i, mtch[, 1]] = hm_list2[[i]][mtch[, 2]]$density
+			}
+			segments = c(segments, GRanges(chr, ranges = IRanges(gene_end - 100, gene_end), score = 0))
+			
+			for(t in unique(factor)) {
+				mat = hm_mat[rownames(hm_mat) %in% sample_id[factor == t], , drop = FALSE]
+				mat = cbind(mat, rep(0, nrow(mat)))
+				mat[1, ncol(mat)] = max(hm_mat)
+				trackList = pushTrackList(trackList, DataTrack(name = t,
+											start = start(segments),
+											end = end(segments),
+											chromosome = seqnames(segments),
+											genome = species,
+											data = mat,
+											type = "heatmap",
+											showSampleNames = TRUE,
+											gradient = c("white", "purple"),
+											size = 2,
+											col = NA))
+			}
 		}
 	}
 
 	qqcat("draw gviz plot...\n")
-	plotTracks(trackList, from = gene_start, to = gene_end, chromosome = chr, main = gi)
+	plotTracks(trackList, from = gene_start, to = gene_end, chromosome = chr, main = paste(gi, symbol))
 
 	#grid.text(paste(gf_name, collapse = "\n"), x = unit(4, "mm"), y = unit(4, "mm"), just = c("left", "bottom"), gp = gpar(fontsize = 8))
 		

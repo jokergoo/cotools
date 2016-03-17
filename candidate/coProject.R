@@ -144,7 +144,7 @@ initialize_project = function(sample_id, chromosome, species,
 		}
 		# test get_hm
 		lapply(seq_along(lt), function(i) {
-			gr = get_hm(histome_marks[i], sample_id[lt[[i]]][1])
+			gr = get_hm(sample_id[lt[[i]]][1], histome_marks[i])
 			if(!inherits(gr, "GRanges")) {
 				stop("'get_hm' should return a 'GRanges' object.")
 			}

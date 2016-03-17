@@ -1,8 +1,7 @@
  
 source("~/project/development/cotools/script/load_all.R")
-source("~/project/development/cotools/test/head.R")
+source("~/project/development/cotools/pipeline/head/head.R")
 
-setwd("/home/guz/project/analysis/hipo16_new/figure_prepare/")
 
 expr = log2(expr + 1)
 
@@ -12,7 +11,7 @@ MR_stat = function(MR_list, name) {
     gr[seqnames(gr) %in% paste0("chr", 1:22)]
   })
 
-  pdf(qq("@{name}_statistics.pdf"))
+  pdf(qq("@{output_dir}/@{name}_statistics.pdf"))
   basic_genomic_regions_stat(MR_list, annotation = SAMPLE$type, annotation_color = SAMPLE_COLOR)
   basic_genomic_regions_stat(MR_list, type = "number", annotation = SAMPLE$type, annotation_color = SAMPLE_COLOR)
   basic_genomic_regions_stat(MR_list, type = "median_width", annotation = SAMPLE$type, annotation_color = SAMPLE_COLOR)
@@ -33,8 +32,8 @@ MR_corr = function(MR_list, name) {
   })
 
   res = genomic_regions_correlation(MR_list, GENOMIC_FEATURE_LIST, chromosome = chromosome, nperm = 2)
-  pdf(qq("@{name}_correlation.pdf"), width = 10, height = 5)
-  ha = HeatmapAnnotation(subtype = SAMPLE$type, col = list(subtype = SAMPLE_COLOR))
+  pdf(qq("@{output_dir}/@{name}_correlation.pdf"), width = 10, height = 5)
+  ha = HeatmapAnnotation(subtype = SAMPLE$type, age = SAMPLE$age, col = list(subtype = SAMPLE_COLOR, age = AGE_COL_FUN))
   # ht = Heatmap(res$foldChange, top_annotation = ha, column_title = qq("@{name}, fold change, stat: jaccard coefficient"))
   # draw(ht)
   ht = Heatmap(res$stat, top_annotation = ha, column_title = qq("@{name}, jaccard coefficient"), cluster_columns = FALSE)
@@ -84,7 +83,7 @@ cm = ColorMapping(level = names(SAMPLE_COLOR), color = SAMPLE_COLOR)
 lgd1 = color_mapping_legend(cm, title = "Subtype", plot = FALSE)
 cm = ColorMapping(level = c("LMR", "UMR"), color = c(UMR = "green", LMR = "blue"))
 lgd2 = color_mapping_legend(cm, title = "Methylated regions", plot = FALSE)
-pdf("LMR_UMR_overlap_with_CGI.pdf", width = 10, height = 6)
+pdf(qq("@{output_dir}/LMR_UMR_overlap_with_CGI.pdf"), width = 10, height = 6)
 draw(ht, padding = unit(c(10, 20, 5, 5), "mm"), heatmap_legend_list = list(lgd2, lgd1))
 decorate_annotation("barplot", {
   grid.text("percent", x = unit(-15, "mm"), rot = 90, just = "bottom")

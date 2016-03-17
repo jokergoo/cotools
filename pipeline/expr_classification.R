@@ -1,9 +1,9 @@
 source("~/project/development/cotools/script/load_all.R")
-source("~/project/development/cotools/test/head.R")
+source("~/project/development/cotools/pipeline/head/head.R")
 
 # chromosome = c("chr21", "chr22")
 
-setwd("/home/guz/project/analysis/hipo16_new/figure_prepare/")
+#setwd(output_dir)
 
 gene = genes(txdb)
 chr = as.vector(seqnames(gene))
@@ -37,9 +37,9 @@ res = ConsensusClusterPlus(mat, maxK = 6,
     clusterAlg = "hc", distance = "spearman", reps = 1000, verbose = TRUE)
 
 class = res[[4]]$consensusClass
-pdf(qq("expression_classification_rnaseq.pdf"), width = 10, height = 10)
-ha = HeatmapAnnotation(subtype = SAMPLE$type, class = class, 
-  col = list(subtype = SAMPLE_COLOR, class = structure(2:5, names = unique(class))))
+pdf(qq("@{output_dir}/expression_classification_rnaseq.pdf"), width = 10, height = 10)
+ha = HeatmapAnnotation(subtype = SAMPLE$type, age = SAMPLE$age, class = class, 
+  col = list(subtype = SAMPLE_COLOR, age = AGE_COL_FUN, class = structure(2:5, names = unique(class))))
 ht = Heatmap(mat, col = colorRamp2(quantile(mat, c(0, 0.5, 0.9)), c("blue", "white", "red")), 
   top_annotation = ha, show_row_names = FALSE, cluster_columns = res[[4]]$consensusTree) +
   Heatmap(gt[rownames(mat)], col = c("protein_coding" = "red", "others" = "grey"), 

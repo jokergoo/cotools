@@ -6,14 +6,16 @@
 # == param
 # -site CpG sites
 # -meth methylation matrix corresponding to ``site``
+# -cov coverage
 # -expr expression for current gene
 # -chr chromosome
-# -type negative or positive
-# -p_cutoff cutoff for p-value for correlation test
-# -other_filter other filter on methylation and expression
+# -cov_cutoff cutoff for coverage
+# -min_dp minimal number of non-NA values for calculating correlations
+# -cor_method method for calcualting correlations
+# -window_size how many CpG sites in a window
+# -factor subtype
+# -max_width maximum width of a window
 #
-# == detail
-# wrapper on `GenomicRegions::genomic_regions_finder`
 correlated_regions_per_gene = function(site, meth, cov, expr, chr, cov_cutoff = 3, min_dp = 4,
 	cor_method = "spearman", window_size = 5, factor = NULL, max_width = 10000) {
 
@@ -101,10 +103,14 @@ correlated_regions_per_gene = function(site, meth, cov, expr, chr, cov_cutoff = 
 # -chr chromosome
 # -extend extension of gene model, both upstream and downstream
 # -cov_filter function to filter on coverage
-# -type type of correlation
-# -p_cutoff cutoff for correlation test
-# -factor if specified, only regions show differential methylation are keeped
-# -mean_diff mean different between groups
+# -cor_method method to calculate correlation
+# -factor subtype
+# -window_size how many CpGs in a window
+# -max_width maximum width of a window
+# -raw_meth whether use raw methylation value (unsmoothed)
+# -cov_cutoff cutoff for coverage
+# -min_dp minimal non-NA values for calculating correlations
+# -col color for subtypes
 #
 # == detail
 # based on `correlated_regions_per_gene`
@@ -241,7 +247,19 @@ correlated_regions = function(sample_id, expr, txdb, chr, extend = 50000,
 	return(res)
 }
 
-filter_correlated_regions = function(chromosome = paste0("chr", c(1:22, "X")), template, 
+# == title
+# filter correlation regions
+# 
+# == param
+# -chromosome chromosomes
+# -template template to find cr files
+# -cutoff cutoff of adjusted p-values
+# -adj_method method for calculating adjusted p-values
+# -meth_diameter_cutoff cutoff for diameters
+# -meth_IQR_cutoff cutoff for IQR, if there is no subtype information, IQR is used to remove less variable methylation
+# -anova_cutoff cutoff for ANOVA test
+#
+filter_correlated_regions = function(chromosome = paste0("chr", 1:22), template, 
 	cutoff = 0.05, adj_method = "BH", meth_diameter_cutoff = 0.25, meth_IQR_cutoff = 0.25,
 	anova_cutoff = 0.05) {
 
@@ -316,6 +334,7 @@ filter_correlated_regions = function(chromosome = paste0("chr", c(1:22, "X")), t
 	}
 
 	attr(cr2, "factor") = attr(cr, "factor")
+	attr(cr2, "col") = attr(cr, "col")
 	attr(cr2, "cor_method") = attr(cr, "cor_method")
 	attr(cr2, "extend") = attr(cr, "extend")
 	attr(cr2, "window_size") = attr(cr, "window_size")
@@ -329,8 +348,53 @@ filter_correlated_regions = function(chromosome = paste0("chr", c(1:22, "X")), t
 	cr2
 }
 
+
+reduce_cr_gap_test = function(cr) {
+	neg_cr = cr[cr$corr < 0]
+	neg_cr_list = split(as.data.frame(neg_cr), neg_cr$gene_id)
+	neg_cr_rainfall = do.call("rbind", lapply(neg_cr_list, rainfallTransform))
+	neg_cr_rainfall$ratio = neg_cr_rainfall$dist/(neg_cr_rainfall$end - neg_cr_rainfall$start + 1)
+
+	x = neg_cr_rainfall$dist
+
+	par(mfrow = c(2, 3))
+	for(i in c(10, 100, 500, 1000, 2000)) {
+		plot(density(log10(x[x >= i])), axes = FALSE, main = qq("neg_cr, dist >= @{i}bp"))
+		axis(side = 1, at = 1:10, labels = 10^(1:10))
+		axis(side = 2)
+		box()
+	}
+
+	pos_cr = cr[cr$corr > 0]
+	pos_cr_list = split(as.data.frame(pos_cr), pos_cr$gene_id)
+	pos_cr_rainfall = do.call("rbind", lapply(pos_cr_list, rainfallTransform))
+	pos_cr_rainfall$ratio = pos_cr_rainfall$dist/(pos_cr_rainfall$end - pos_cr_rainfall$start + 1)
+
+	x = pos_cr_rainfall$dist
+
+	par(mfrow = c(2, 3))
+	for(i in c(10, 100, 500, 1000, 2000)) {
+		plot(density(log10(x[x >= i])), axes = FALSE, main = qq("pos_cr, dist >= @{i}bp"))
+		axis(side = 1, at = 1:10, labels = 10^(1:10))
+		axis(side = 2)
+		box()
+	}
+}
+
+# == title
+# refuce cr regions
+#
+# == param
+# -cr cr 
+# -expe expression
+# -txdb txdb
+# -max_gap maximum gap
+# -gap gap
+# -mc.cores number of cores
+#
+# == detail
 # pos_CR and neg_CR are reduced separatedly
-reduce_cr = function(cr, expr, txdb, max_gap = 1000, gap = 1.0) {
+reduce_cr = function(cr, expr, txdb, max_gap = 1000, gap = 1.0, mc.cores = 1) {
 
 	sample_id = attr(cr, "sample_id")
 	cor_method = attr(cr, "cor_method")
@@ -360,7 +424,7 @@ reduce_cr = function(cr, expr, txdb, max_gap = 1000, gap = 1.0) {
 
 	cr_list = split(cr, cr$gene_id)
 	i = 0
-	res = lapply(names(cr_list), function(gi) {
+	res = mclapply(names(cr_list), function(gi) {
 
 		qqcat("reducing cr on @{gi}, @{i <<- i+1}/@{length(cr_list)}...\n")
 		cr = cr_list[[gi]]
@@ -396,11 +460,12 @@ reduce_cr = function(cr, expr, txdb, max_gap = 1000, gap = 1.0) {
 		gr$nearest_tx_tss = tss[dist[,2]]$tx_name
 
 		gr
-	})
+	}, mc.cores = mc.cores)
 
 	cr2 = do.call("c", res)
 
 	attr(cr2, "factor") = attr(cr, "factor")
+	attr(cr2, "col") = attr(cr, "col")
 	attr(cr2, "cor_method") = attr(cr, "cor_method")
 	attr(cr2, "extend") = attr(cr, "extend")
 	attr(cr2, "window_size") = attr(cr, "window_size")
@@ -411,6 +476,17 @@ reduce_cr = function(cr, expr, txdb, max_gap = 1000, gap = 1.0) {
 	cr2
 }
 
+# == title
+# ad subtype specificity columns
+#
+# == param
+# -cr cr
+# -cutoff cutoff for ANOVA test
+#
+# == details
+# 1 is defined as the methylation is higher than all other subtypes and the difference is significant.
+# -1 is defined as the methylation is lower than all other subtypes and the difference is significant.
+# All the others are defined as 0.
 add_subtype_specificity = function(cr, cutoff = 0.05, suffix = "_ss") {
 	
 	factor = attr(cr, "factor")
@@ -461,7 +537,7 @@ add_subtype_specificity = function(cr, cutoff = 0.05, suffix = "_ss") {
 
 		l = apply(mat_p, 1, function(x) {
 			x = x[!is.na(x)]
-			all(x < 0.05)
+			all(x < cutoff)
 		})
 		ss[!l] = 0
 		subtype_ss[i, ] = ss

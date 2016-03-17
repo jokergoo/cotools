@@ -16,7 +16,7 @@
 #
 # 10000 CpG sites are randomly sampled to make the plot
 #
-wgbs_qcplot = function(sample_id, chromosome = paste0("chr", c(1:22, "X"))) {
+wgbs_qcplot = function(sample_id, chromosome = paste0("chr", 1:22)) {
 
 	# coverage and methylation per chromosome
 	data = rep(list(list(cov = NULL, meth = NULL, strand = NULL)), length(sample_id))
@@ -145,11 +145,13 @@ wgbs_qcplot = function(sample_id, chromosome = paste0("chr", c(1:22, "X"))) {
 # -sid sample id
 # -chromosome chromosome
 # -species species
-# -window_width window width
-# -style style of visualization
+# -nw number of windows
 # -... pass to `gtrellis::initialize_layout`
 #
-plot_coverage_and_methylation_on_genome = function(sid, chromosome = paste0("chr", c(1:22, "X")), 
+# == details
+# There will be a track for methylation and one track for coverage.
+#
+plot_coverage_and_methylation_on_genome = function(sid, chromosome = paste0("chr", 1:22), 
 	species = "hg19", nw = 10000, ...) {
 
 	w = round(read.chromInfo(species = species)$chr.len["chr1"]/nw)
@@ -209,7 +211,7 @@ plot_coverage_and_methylation_on_genome = function(sid, chromosome = paste0("chr
 # -... pass to `gtrellis::initialize_layout`
 #
 plot_multiple_samples_methylation_on_genome = function(sample_id, annotation, 
-	chromosome = paste0("chr", c(1:22, "X")), species = "hg19", nw = 1000, ...) {
+	chromosome = paste0("chr", 1:22), species = "hg19", nw = 1000, ...) {
 	
 	col_fun = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red"), transparency = 0.8)
 	type = unique(annotation)
@@ -254,21 +256,43 @@ plot_multiple_samples_methylation_on_genome = function(sample_id, annotation,
 	}
 }
 
-.mat_dist = function(mat, anno, col, title = NULL, ...) {
+.mat_dist = function(mat, anno, col, ha = NULL, title = NULL, ...) {
 
 	od = order(factor(anno, levels = unique(anno), ordered = TRUE), colMedians(mat, na.rm = TRUE))
-	mat = mat[, od]
+	# mat = mat[, od]
 
-	densityHeatmap(mat, anno = HeatmapAnnotation(df = data.frame(type = anno), col = list(type = col)), title = title, ...)
+	if(is.null(ha)) ha = HeatmapAnnotation(df = data.frame(type = anno), col = list(type = col))
 
+	densityHeatmap(mat, anno = ha, title = title, column_order = od, ...)
+	for(an in sapply(ha@anno_list, function(x) x@name)) {
+		decorate_annotation(an, {
+			grid.text(an, x = unit(-2, "mm"), just = "right")
+		})
+	}
 	## MDS plot
 	loc = cmdscale(dist2(t(mat), pairwise_fun = function(x, y) {l = is.na(x) | is.na(y); x = x[!l]; y = y[!l]; sqrt(sum((x-y)^2))}))
 	plot(loc[, 1], loc[, 2], pch = 16, cex = 1, col = col[anno], main = qq("MDS:@{title}"), xlab = "dimension 1", ylab = "dimension 2")
 	legend("bottomleft", pch = 16, legend = names(col), col = col)
 }
 
+
+# == title
+# global methylation distribution
+# 
+# == param
+# -sample_id sample id
+# -annotation subtype
+# -annotation_color color for subtypes
+# -ha heatmap annotations
+# -chromosome chromosome
+# -by_chr whether by chr
+# -max_cov maximum coverage
+# -background background
+# -p probability to randomly sample CpG sites
+#
 global_methylation_distribution = function(sample_id, annotation, 
 	annotation_color = structure(seq_along(unique(annotation)), names = unique(annotation)),
+	ha = NULL,
 	chromosome = paste0("chr", c(1:22, "X")), by_chr = FALSE, max_cov = 100,
 	background = NULL, p = 0.001) {
 
@@ -302,8 +326,8 @@ global_methylation_distribution = function(sample_id, annotation,
 		if(by_chr) {
 			cm[cm == 0] = NA
 			cm[cm > max_cov] = NA
-			.mat_dist(mm, anno = annotation, col = annotation_color, title = qq("methylation:@{chr}"), range = c(0, 1), ylab = "methylation")
-			.mat_dist(log10(cm), anno = annotation, col = annotation_color, title = qq("coverage:@{chr}"), range = c(0, Inf), ylab = qq("log10(CpG coverage, 1~@{max_cov})"))
+			.mat_dist(mm, anno = annotation, col = annotation_color, ha = ha, title = qq("methylation:@{chr}"), range = c(0, 1), ylab = "methylation")
+			.mat_dist(log10(cm), anno = annotation, col = annotation_color, ha = ha, title = qq("coverage:@{chr}"), range = c(0, Inf), ylab = qq("log10(CpG coverage, 1~@{max_cov})"))
 		}
 	}
 
@@ -316,8 +340,8 @@ global_methylation_distribution = function(sample_id, annotation,
 		cov_mat[cov_mat == 0] = NA
 		cov_mat[cov_mat > max_cov] = NA
 
-		.mat_dist(meth_mat, anno = annotation, col = annotation_color, title = "methylation", range = c(0, 1), ylab = "methylation")
-		.mat_dist(log10(cov_mat), anno = annotation, col = annotation_color, title = "coverage", range = c(0, Inf), ylab = qq("log10(CpG coverage, 1~@{max_cov})"))
+		.mat_dist(meth_mat, anno = annotation, col = annotation_color, ha = ha, title = "methylation", range = c(0, 1), ylab = "methylation")
+		.mat_dist(log10(cov_mat), anno = annotation, col = annotation_color, ha = ha, title = "coverage", range = c(0, Inf), ylab = qq("log10(CpG coverage, 1~@{max_cov})"))
 		
 		od = order(factor(annotation, levels = unique(annotation), ordered = TRUE), colMedians(meth_mat, na.rm = TRUE))
 		return(od)
