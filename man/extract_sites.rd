@@ -91,4 +91,5 @@ a vector of positions or index. If there is no sites in the interval, it will re
 \examples{
 # There is no example
 NULL
+
 }

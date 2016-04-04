@@ -24,4 +24,5 @@ Be careful with \code{strand} in your \code{\link[GenomicRanges]{GRanges}} objec
 \examples{
 # There is no example
 NULL
+
 }

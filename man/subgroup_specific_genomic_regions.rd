@@ -28,4 +28,5 @@ The returned value can be sent to \code{\link{plot_subgroup_specificity_heatmap}
 \examples{
 # There is no example
 NULL
+
 }

@@ -44,4 +44,5 @@ data frame with 0 row.
 \examples{
 # There is no example
 NULL
+
 }

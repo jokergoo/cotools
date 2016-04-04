@@ -18,4 +18,5 @@ cr_qc(chromosome = paste0("chr", 1:22), template)
 \examples{
 # There is no example
 NULL
+
 }

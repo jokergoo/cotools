@@ -28,4 +28,5 @@ Favoriv A, et al. Exploring massive, genome scale datasets with the GenometriCor
 \examples{
 # There is no example
 NULL
+
 }

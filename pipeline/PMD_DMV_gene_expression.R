@@ -1,10 +1,18 @@
  
+suppressPackageStartupMessages(library(GetoptLong))
+
+head = "~/project/development/cotools/pipeline/head/head.R"
+GetoptLong(c("head=s", "head R script"))
+
 source("~/project/development/cotools/script/load_all.R")
-source("~/project/development/cotools/pipeline/head/head.R")
+source(head)
 
 # chromosome = c("chr21", "chr22")
 
 #setwd(output_dir)
+
+expr = expression$rpkm[rownames(expr), ]
+expr = log2(expr + 1)
 
 genes = genes(txdb)
 gt = extract_field_from_gencode(gencode_gtf_file, level = "gene", primary_key = "gene_id", field = "gene_type")

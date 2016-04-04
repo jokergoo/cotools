@@ -12,17 +12,19 @@ plot_multiple_samples_methylation_on_genome(sample_id, annotation,
 }
 \arguments{
 
-  \item{sample_id}{sample ids}
-  \item{annotation}{annotation of samples}
-  \item{annotation_color}{colors}
+  \item{sample_id}{a vector of sample ids}
+  \item{annotation}{annotation of samples (e.g. subtypes)}
   \item{chromosome}{chromosome}
   \item{species}{species}
-  \item{window_width}{window width}
-  \item{style}{style for visualization}
+  \item{nw}{number of windows}
   \item{...}{pass to \code{\link[gtrellis]{initialize_layout}}}
 
+}
+\details{
+The whole genome is segented by \code{nw} windows
 }
 \examples{
 # There is no example
 NULL
+
 }

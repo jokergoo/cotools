@@ -25,4 +25,5 @@ filter_correlated_regions(chromosome = paste0("chr", 1:22), template,
 \examples{
 # There is no example
 NULL
+
 }

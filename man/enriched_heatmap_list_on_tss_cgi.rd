@@ -24,4 +24,5 @@ enriched_heatmap_list_on_tss_cgi(cr, cgi, txdb, expr, hm_list = NULL, hm_name = 
 \examples{
 # There is no example
 NULL
+
 }

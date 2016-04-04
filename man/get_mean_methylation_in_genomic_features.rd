@@ -1,10 +1,10 @@
 \name{get_mean_methylation_in_genomic_features}
 \alias{get_mean_methylation_in_genomic_features}
 \title{
-calculate average methylation value in a list of regions
+Calculate mean methylation value in a list of regions
 }
 \description{
-calculate average methylation value in a list of regions
+Calculate mean methylation value in a list of regions
 }
 \usage{
 get_mean_methylation_in_genomic_features(sample_id, gf_list, average = TRUE, p = 0.001,
@@ -13,18 +13,19 @@ get_mean_methylation_in_genomic_features(sample_id, gf_list, average = TRUE, p =
 }
 \arguments{
 
-  \item{sample_id}{a list of sample IDs}
+  \item{sample_id}{a vector of sample IDs}
   \item{gf_list}{a list of genomic features in \code{\link[GenomicRanges]{GRanges}} class}
-  \item{average}{whether to calcualte average methylation in a interval? if not, the function will randomly sample some CpG sites in the interval}
-  \item{p}{if average is FALSE, the probability to pick cpg sites}
-  \item{chromosome}{chromosome name}
-  \item{filter_fun}{filtering function on sites in each intersection}
+  \item{average}{whether to calcualte average methylation in a interval? if not, the function will randomly sample CpG sites from the input regions.}
+  \item{p}{if average is FALSE, the probability to pick CpG sites}
+  \item{chromosome}{a vector of chromosomes}
+  \item{filter_fun}{filtering function on CpG sites in each intersection (e.g. exclude regions which contains too few CpGs). The object sent to this function is a vector of positions for CpGs that locate in the current region.}
 
 }
 \value{
-a list of \code{GRanges} objects.
+a list of \code{GRanges} objects in which mean methylation matrix are attached.
 }
 \examples{
 # There is no example
 NULL
+
 }

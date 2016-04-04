@@ -21,4 +21,5 @@ columns are clustered inside each subgroup.
 \examples{
 # There is no example
 NULL
+
 }

@@ -28,4 +28,5 @@ enriched_heatmap_list_on_gene(cr, cgi, txdb, expr, hm_list = NULL, hm_name = NUL
 \examples{
 # There is no example
 NULL
+
 }

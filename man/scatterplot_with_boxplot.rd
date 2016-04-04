@@ -1,10 +1,10 @@
 \name{scatterplot_with_boxplot}
 \alias{scatterplot_with_boxplot}
 \title{
-scatterplot with boxplot
+scatterplot with boxplots on both sides
 }
 \description{
-scatterplot with boxplot
+scatterplot with boxplots on both sides
 }
 \usage{
 scatterplot_with_boxplot(x, y, annotation = rep("unknown", length(x)),
@@ -15,7 +15,7 @@ scatterplot_with_boxplot(x, y, annotation = rep("unknown", length(x)),
 
   \item{x}{x}
   \item{y}{y}
-  \item{annotation}{annotation}
+  \item{annotation}{annotations}
   \item{annotation_color}{colors for annotation}
   \item{main}{title for the plot}
   \item{xlab}{xlab}
@@ -28,4 +28,5 @@ scatterplot_with_boxplot(x, y, annotation = rep("unknown", length(x)),
 \examples{
 # There is no example
 NULL
+
 }

@@ -18,4 +18,5 @@ cr_enriched_at_tss(cr, txdb)
 \examples{
 # There is no example
 NULL
+
 }

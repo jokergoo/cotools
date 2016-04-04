@@ -5,16 +5,20 @@
 
 
 # == title
-# basic qc plot for methylation
+# Basic qc plot for bisulfite sequencing data
 #
 # == param
-# -sample_id a single sample id
-# -chromosome chromosome
+# -sample_id a vector of sample ids
+# -chromosome a vector of chromosomes
 #
 # == detail
-# it will produce five plots
+# For each sample id, it will produce five plots:
 #
-# 10000 CpG sites are randomly sampled to make the plot
+# 1. mean/median CpG coverage per chromosome
+# 2. histogram of CpG coverage
+# 3. methylation per chromosome 
+# 4. histogram of methylation
+# 5. mean Methylation for each CpG coverage 
 #
 wgbs_qcplot = function(sample_id, chromosome = paste0("chr", 1:22)) {
 
@@ -142,14 +146,15 @@ wgbs_qcplot = function(sample_id, chromosome = paste0("chr", 1:22)) {
 # coverage and methylation for one sample
 #
 # == param
-# -sid sample id
+# -sid a single sample id
 # -chromosome chromosome
 # -species species
 # -nw number of windows
 # -... pass to `gtrellis::initialize_layout`
 #
 # == details
-# There will be a track for methylation and one track for coverage.
+# The whole genome is segented by ``nw`` windows and mean methylation and mean CpG coverage
+# are visualized as two tracks.
 #
 plot_coverage_and_methylation_on_genome = function(sid, chromosome = paste0("chr", 1:22), 
 	species = "hg19", nw = 10000, ...) {
@@ -201,14 +206,15 @@ plot_coverage_and_methylation_on_genome = function(sid, chromosome = paste0("chr
 # methylation for more than one samples
 #
 # == param
-# -sample_id sample ids
-# -annotation annotation of samples
-# -annotation_color colors
+# -sample_id a vector of sample ids
+# -annotation annotation of samples (e.g. subtypes)
 # -chromosome chromosome
 # -species species
-# -window_width window width
-# -style style for visualization
+# -nw number of windows
 # -... pass to `gtrellis::initialize_layout`
+#
+# == details
+# The whole genome is segented by ``nw`` windows
 #
 plot_multiple_samples_methylation_on_genome = function(sample_id, annotation, 
 	chromosome = paste0("chr", 1:22), species = "hg19", nw = 1000, ...) {
@@ -277,23 +283,25 @@ plot_multiple_samples_methylation_on_genome = function(sample_id, annotation,
 
 
 # == title
-# global methylation distribution
+# Global methylation distribution
 # 
 # == param
-# -sample_id sample id
-# -annotation subtype
+# -sample_id a vector of sample ids
+# -annotation subtype information
 # -annotation_color color for subtypes
-# -ha heatmap annotations
-# -chromosome chromosome
-# -by_chr whether by chr
-# -max_cov maximum coverage
-# -background background
+# -ha additional annotation can be specified as a `ComplexHeatmap::HeatmapAnnotation` object
+# -chromosome chromosomes
+# -by_chr whether make the plot by chromosome
+# -max_cov maximum coverage (used to get rid of extremely high coverage which affect visualization of CpG coverage distribution)
+# -background background to look into
 # -p probability to randomly sample CpG sites
+#
+# == details
+# It visualize distribution of methylation valus and CpG coverages through heatmaps.
 #
 global_methylation_distribution = function(sample_id, annotation, 
 	annotation_color = structure(seq_along(unique(annotation)), names = unique(annotation)),
-	ha = NULL,
-	chromosome = paste0("chr", c(1:22, "X")), by_chr = FALSE, max_cov = 100,
+	ha = NULL, chromosome = paste0("chr", 1:22), by_chr = FALSE, max_cov = 100,
 	background = NULL, p = 0.001) {
 
 	annotation_color = annotation_color[intersect(names(annotation_color), unique(annotation))]

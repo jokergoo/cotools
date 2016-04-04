@@ -1,13 +1,16 @@
- 
+suppressPackageStartupMessages(library(GetoptLong))
+
+head = "~/project/development/cotools/pipeline/head/head.R"
+GetoptLong(c("head=s", "head R script"))
 
 source("~/project/development/cotools/script/load_all.R")
-source("~/project/development/cotools/pipeline/head/head.R")
+source(head)
 
-cr_filtered = readRDS(qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/rds/cr_filtered_fdr_0.01.rds"))
-cr_reduced = readRDS(qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/rds/cr_reduced_fdr_0.01_gap_1kb.rds"))
+cr_filtered = readRDS(qq("@{RDS_FOLDER}/cr_filtered_fdr_0.01.rds"))
+cr_reduced = readRDS(qq("@{RDS_FOLDER}/cr_reduced_fdr_0.01_gap_1kb.rds"))
 
-attr(cr_filtered, "col") = SAMPLE_COLOR
-attr(cr_reduced, "col") = SAMPLE_COLOR
+# attr(cr_filtered, "col") = SAMPLE_COLOR
+# attr(cr_reduced, "col") = SAMPLE_COLOR
 
 ### some per chromosome barplots
 neg_cr = cr_filtered[cr_filtered$corr < 0]
@@ -28,14 +31,16 @@ barplot(c("neg_cr" = w1, "pos_cr" = w2), beside = TRUE, col = c("green", "red"),
 axis(side = 2, at = c(0, 10, 20, 30)*1000000, labels = c("0MB", "10MB", "20MB", "30MB"))
 dev.off()
 
+if(0) {
+
 #######
 ## test
 gi = "ENSG00000060982.10"  # BCAT1, neg_cr at two alternative tx start site, 25.05M, 25.1M
-cr = readRDS(qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/rds/chr12_cr.rds"))
+cr = readRDS(qq("@{RDS_FOLDER}/chr12_cr.rds"))
 x = cr[cr$gene_id == "ENSG00000060982.10"]
 attr(cr_filtered, "col") = attr(cr, "col")
 
-cr = readRDS(qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/rds/chr12_cr_raw_meth.rds"))
+cr = readRDS(qq("@{RDS_FOLDER}/chr12_cr_raw_meth.rds"))
 x2 = cr[cr$gene_id == "ENSG00000060982.10"]
 
 methylation_hooks$set("chr12")
@@ -59,10 +64,11 @@ pdf(qq("@{output_dir}/BCAT1_meth_plot.pdf"), width = 10, height = 8)
 compare_meth(cr_filtered, "chr12", 25050000, 25060000, x, x2)
 dev.off()
 
+}
 
 # #cpg and sum_width changing with cutoff
 pdf(qq("@{output_dir}/cr_qc.pdf"), width = 8, height = 8)
-foo = cr_qc(template = paste0(co_opt$wd, "/rds/@{chr}_cr.rds"))
+foo = cr_qc(template = paste0(RDS_FOLDER, "/@{chr}_cr.rds"))
 dev.off()
 
 
@@ -73,14 +79,13 @@ dev.off()
 
 
 pdf(qq("@{output_dir}/hilbert_all.pdf"), width = 18, height = 12)
-cr_hilbert(template = paste0(co_opt$wd, "/rds/@{chr}_cr.rds"), txdb = txdb, merge_chr = TRUE)
-cr_hilbert(template = paste0(co_opt$wd, "/rds/@{chr}_cr.rds"), txdb = txdb, merge_chr = FALSE)
+cr_hilbert(template = paste0(RDS_FOLDER, "/@{chr}_cr.rds"), txdb = txdb, merge_chr = TRUE)
+cr_hilbert(template = paste0(RDS_FOLDER, "/@{chr}_cr.rds"), txdb = txdb, merge_chr = FALSE)
 dev.off()
 
 
-
 pdf(qq("@{output_dir}/cr_overlap.pdf"), width = 8, height = 5)
-cr_overlap_to_genomic_features(cr_filtered, GENOMIC_FEATURE_LIST)
+cr_overlap_to_genomic_features(cr_filtered, GENOMIC_FEATURE_LIST, chromosome = chromosome)
 dev.off()
 
 
@@ -91,9 +96,9 @@ cr_enriched_at_tss(cr_filtered, txdb)
 dev.off()
 
 
-
+if(0) {
 ## test a cgi
-pdf("@{output_dir}/LRRC3_meth_plot.pdf", width = 10, height = 8)
+pdf(qq("@{output_dir}/LRRC3_meth_plot.pdf"), width = 10, height = 8)
 compare_meth(cr_filtered, "chr21", 45874000, 45878000)
 dev.off()
 
@@ -102,134 +107,111 @@ dev.off()
 pdf(qq("@{output_dir}/cr_scatter.pdf"), width = 8, height = 8)
 cr_scatterplot_me(cr_filtered, expr, gi = "ENSG00000060982.10", text_column = c("corr_p", "meth_anova", "meth_diameter", "gene_tss_dist"))
 dev.off()
-
-
-
-
-######## part 3: complex heatmaps ###############
-
-make_enriched_heatmap = function(histone_mark, by, on, which) {
-	sample = dir("/icgc/dkfzlsdf/analysis/hipo/hipo_016/chipseq_gbm/", pattern = qq("AK.*@{histone_mark}"))
-	sample = gsub(qq("_@{histone_mark}"), "", sample)
-	sample = intersect(SAMPLE$id, sample)
-
-	hm_list = list()
-	for(i in seq_along(sample)) {
-	    cat(sample[i], "\n")
-	    gr = get_hm(sample[i], histone_mark)
-	    hm_list[[i]] = gr
-	}
-	names(hm_list) = sample
-
-
-	if(which == "neg") {
-	    cr = cr_filtered[cr_filtered$corr < 0]
-	} else {
-	    cr = cr_filtered[cr_filtered$corr > 0]
-	}
-
-	ht_global_opt(heatmap_column_title_gp = gpar(fontsize = 10))
-	pdf(qq("@{output_dir}/heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.pdf"), width = 18, height = 10)
-	enriched_heatmap_list_on_gene(cr, GENOMIC_FEATURE_LIST$cgi, txdb, log2(expr+1), hm_list, 
-	    hm_name = histone_mark, on = on, by = by)
-	dev.off()
-
-	system(qq("convert @{output_dir}/heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.pdf @{output_dir}/heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.png"))
-
-	pdf(qq("@{output_dir}/heatmap_cgi_@{by}_@{which}_@{histone_mark}.pdf"), width = 12, height = 10)
-	enriched_heatmap_list_on_tss_cgi(cr, GENOMIC_FEATURE_LIST$cgi, txdb, log2(expr+1), hm_list, 
-	    hm_name = histone_mark, by = "gene")
-	dev.off()
-
-	system(qq("convert @{output_dir}/heatmap_cgi_@{by}_@{which}_@{histone_mark}.pdf @{output_dir}/heatmap_cgi_@{by}_@{which}_@{histone_mark}.png"))
-
-}
-
-for(hm in c("H3K4me3", "H3K27Ac", "H3K27me3", "H3K36me3", "H3K4me1", "H3K9me3")) {
-	make_enriched_heatmap(hm, by = "gene", on = "tss", which = "neg")
-	make_enriched_heatmap(hm, by = "gene", on = "tss", which = "pos")
-	make_enriched_heatmap(hm, by = "tx", on = "tss", which = "neg")
-	make_enriched_heatmap(hm, by = "tx", on = "tss", which = "pos")
-	make_enriched_heatmap(hm, by = "gene", on = "body", which = "neg")
-	make_enriched_heatmap(hm, by = "gene", on = "body", which = "pos")
 }
 
 
-######################## gviz ########################
-sample = dir("/icgc/dkfzlsdf/analysis/hipo/hipo_016/chipseq_gbm/", pattern = qq("AK.*H3K4me3"))
-sample = gsub(qq("_H3K4me3"), "", sample)
-sample = intersect(SAMPLE$id, sample)
 
-hm_list = list()
-for(i in seq_along(sample)) {
-    cat(sample[i], "\n")
-    gr = get_hm(sample[i], "H3K4me3")
-    hm_list[[i]] = gr
-}
-names(hm_list) = sample
+# ######## part 3: complex heatmaps ###############
 
-load("/icgc/dkfzlsdf/analysis/B080/guz/gencode/gencode_v19_transcript_merged.RData")
-gn = sapply(gene_annotation$gtf, function(x) x$name)
-tx_list = transcriptsBy(txdb, by = "gene")
-gi = "ENSG00000060982.10"
-for(chr in unique(as.character(seqnames(cr_filtered)))) {
-	cat(chr, "...\n")
-    cr_subset = cr_filtered[seqnames(cr_filtered) == chr]
-    for(gi in unique(cr_subset$gene_id)) {
-        pdf(qq("@{output_dir}/gviz/gviz_@{chr}_@{gi}_@{gn[gi]}.pdf"), width = 16, height = 12)
-        cr_gviz(cr_filtered, gi, expr, txdb, tx_list = tx_list[[gi]]$tx_name, gf_list = GENOMIC_FEATURE_LIST[c("cgi", "tfbs")], 
-        	hm_list = hm_list, symbol = gn[gi])
-        dev.off()
-    }
-}
-##############################################
+# make_enriched_heatmap = function(histone_mark, by, on, which) {
+	
+# 	hm_list = get_hm_list(histone_mark)
+
+# 	if(which == "neg") {
+# 	    cr = cr_filtered[cr_filtered$corr < 0]
+# 	} else {
+# 	    cr = cr_filtered[cr_filtered$corr > 0]
+# 	}
+
+# 	ht_global_opt(heatmap_column_title_gp = gpar(fontsize = 10))
+# 	pdf(qq("@{output_dir}/heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.pdf"), width = 18, height = 10)
+# 	enriched_heatmap_list_on_gene(cr, GENOMIC_FEATURE_LIST$cgi, txdb, log2(expr+1), hm_list, 
+# 	    hm_name = histone_mark, on = on, by = by)
+# 	dev.off()
+
+# 	system(qq("convert @{output_dir}/heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.pdf @{output_dir}/heatmap_simple_@{by}_@{on}_@{which}_@{histone_mark}.png"))
+
+# 	pdf(qq("@{output_dir}/heatmap_cgi_@{by}_@{which}_@{histone_mark}.pdf"), width = 12, height = 10)
+# 	enriched_heatmap_list_on_tss_cgi(cr, GENOMIC_FEATURE_LIST$cgi, txdb, log2(expr+1), hm_list, 
+# 	    hm_name = histone_mark, by = "gene")
+# 	dev.off()
+
+# 	system(qq("convert @{output_dir}/heatmap_cgi_@{by}_@{which}_@{histone_mark}.pdf @{output_dir}/heatmap_cgi_@{by}_@{which}_@{histone_mark}.png"))
+
+# }
+
+# for(hm in c("H3K4me3", "H3K27Ac", "H3K27me3", "H3K36me3", "H3K4me1", "H3K9me3")) {
+# 	make_enriched_heatmap(hm, by = "gene", on = "tss", which = "neg")
+# 	make_enriched_heatmap(hm, by = "gene", on = "tss", which = "pos")
+# 	make_enriched_heatmap(hm, by = "tx", on = "tss", which = "neg")
+# 	make_enriched_heatmap(hm, by = "tx", on = "tss", which = "pos")
+# 	make_enriched_heatmap(hm, by = "gene", on = "body", which = "neg")
+# 	make_enriched_heatmap(hm, by = "gene", on = "body", which = "pos")
+# }
+
+
+# ######################## gviz ########################
+# hm_list = get_hm_list("H3K4me3")
+
+# gn = extract_field_from_gencode(gencode_gtf_file, level = "gene", primary_key = "gene_id", field = "gene_name")
+# tx_list = transcriptsBy(txdb, by = "gene")
+# gi = "ENSG00000060982.10"
+# for(chr in unique(as.character(seqnames(cr_filtered)))) {
+# 	cat(chr, "...\n")
+#     cr_subset = cr_filtered[seqnames(cr_filtered) == chr]
+#     for(gi in unique(cr_subset$gene_id)) {
+#         pdf(qq("@{output_dir}/gviz/gviz_@{chr}_@{gi}_@{gn[gi]}.pdf"), width = 16, height = 12)
+#         cr_gviz(cr_filtered, gi, expr, txdb, tx_list = tx_list[[gi]]$tx_name, gf_list = GENOMIC_FEATURE_LIST[c("cgi", "tfbs")], 
+#         	hm_list = hm_list, symbol = gn[gi])
+#         dev.off()
+#     }
+# }
+# ##############################################
 
 
 ## methylation around enhancers
+if(!interactive()) q(save = "no")
+
 
 
 ## enrichment to histone mark
 CR_corr = function(histone_mark, ...) {
 
-	sample = dir("/icgc/dkfzlsdf/analysis/hipo/hipo_016/chipseq_gbm/", pattern = qq("AK.*@{histone_mark}"))
-	sample = gsub(qq("_@{histone_mark}"), "", sample)
-	sample = intersect(SAMPLE$id, sample)
-
-	hm_list = list()
-	for(i in seq_along(sample)) {
-	    cat(sample[i], "\n")
-	    gr = get_hm(sample[i], histone_mark)
-	    hm_list[[i]] = gr
-	}
-	names(hm_list) = sample
+	hm_list = get_hm_list(histone_mark)
 
 	res = genomic_regions_correlation(hm_list, cr_list, chromosome = chromosome, nperm = 0)
 	ha = HeatmapAnnotation(subtype = SAMPLE[names(hm_list), "type"], col = list(subtype = SAMPLE_COLOR))
 	# ht = Heatmap(res$foldChange, top_annotation = ha, column_title = qq("@{name}, fold change, stat: jaccard coefficient"))
 	# draw(ht)
-	ht = Heatmap(res$stat, top_annotation = ha, column_title = qq("@{histone_mark}, jaccard coefficient"), 
+	Heatmap(res$stat, top_annotation = ha, column_title = qq("@{histone_mark}, jaccard coefficient"), 
 		cluster_columns = FALSE, ...)
-	draw(ht)
 }
 
 neg_cr = cr_filtered[cr_filtered$corr < 0]
 pos_cr = cr_filtered[cr_filtered$corr > 0]
 cr_list = list(neg_cr = neg_cr, pos_cr = pos_cr)
+col_fun = colorRamp2(c(0, 0.013, 0.026), c("blue", "white", "red"))
 pdf(qq("@{output_dir}/cr_enriched_to_histone_marks.pdf"), width = 12, height = 4)
 for(hm in c("H3K4me3", "H3K27Ac", "H3K27me3", "H3K36me3", "H3K4me1", "H3K9me3")) {
-	CR_corr(hm, cluster_rows = FALSE)
+	draw(CR_corr(hm, col = col_fun, cluster_rows = FALSE))
 }
 dev.off()
 
+col_fun = colorRamp2(c(0, 0.004, 0.008), c("blue", "white", "red"))
 label = ifelse(cr_filtered$corr < 0, "neg_cr", "pos_cr")
-label2 = paste(cr_filtered$IDH_ss, cr_filtered$MES_ss, cr_filtered$PDGFRA_ss, cr_filtered$RTK_II_ss, sep = "|")
+label2 = paste(cr_filtered$IDH_ss, cr_filtered$MES_ss, cr_filtered$RTK_I_ss, cr_filtered$RTK_II_ss, sep = "|")
 label_merged = paste(label, label2, sep = "_")
 cr_list = split(cr_filtered, label_merged)
-pdf(qq("@{output_dir}/cr_subtype_enriched_to_histone_marks_subtype_specific_cr.pdf"), width = 12, height = 16)
+pdf(qq("@{output_dir}/cr_subtype_enriched_to_histone_marks_subtype_specific_cr.pdf"), width = 30, height = 10)
+ht_list = NULL
 for(hm in c("H3K4me3", "H3K27Ac", "H3K27me3", "H3K36me3", "H3K4me1", "H3K9me3")) {
-	CR_corr(hm, split = ifelse(grepl("neg", names(cr_list)), "neg", "pos"), cluster_rows = FALSE)
+	ht_list = ht_list + CR_corr(hm, col = col_fun, split = ifelse(grepl("neg", names(cr_list)), "neg", "pos"), cluster_rows = FALSE)
 }
+ht_list = ht_list + rowAnnotation(number = row_anno_barplot(sapply(cr_list, length), axis = TRUE), width = unit(3, "cm"))
+draw(ht_list)
 dev.off()
+
+
 
 
 ## enrichment to enhancers
@@ -255,26 +237,28 @@ CR_corr_to_enhancer = function(type = "active", ...) {
 	ha = HeatmapAnnotation(subtype = SAMPLE[names(hm_list), "type"], col = list(subtype = SAMPLE_COLOR))
 	# ht = Heatmap(res$foldChange, top_annotation = ha, column_title = qq("@{name}, fold change, stat: jaccard coefficient"))
 	# draw(ht)
-	ht = Heatmap(res$stat, top_annotation = ha, column_title = qq("@{type} enhancers, jaccard coefficient"), 
+	Heatmap(res$stat, top_annotation = ha, column_title = qq("@{type} enhancers, jaccard coefficient"), 
 		cluster_columns = FALSE, ...)
-	draw(ht)
 }
 
 neg_cr = cr_filtered[cr_filtered$corr < 0]
 pos_cr = cr_filtered[cr_filtered$corr > 0]
 cr_list = list(neg_cr = neg_cr, pos_cr = pos_cr)
+col_fun = colorRamp2(c(0, 0.004, 0.008), c("blue", "white", "red"))
 pdf(qq("@{output_dir}/cr_enriched_to_enhancers.pdf"), width = 12, height = 4)
-CR_corr_to_enhancer(type = "active", cluster_rows = FALSE)
-CR_corr_to_enhancer(type = "poised", cluster_rows = FALSE)
+draw(CR_corr_to_enhancer(type = "active", col = col_fun, cluster_rows = FALSE))
+draw(CR_corr_to_enhancer(type = "poised", col = col_fun, cluster_rows = FALSE))
 dev.off()
 
-
+col_fun = colorRamp2(c(0, 0.001, 0.002), c("blue", "white", "red"))
 label = ifelse(cr_filtered$corr < 0, "neg_cr", "pos_cr")
-label2 = paste(cr_filtered$IDH_ss, cr_filtered$MES_ss, cr_filtered$PDGFRA_ss, cr_filtered$RTK_II_ss, sep = "|")
+label2 = paste(cr_filtered$IDH_ss, cr_filtered$MES_ss, cr_filtered$RTK_I_ss, cr_filtered$RTK_II_ss, sep = "|")
 label_merged = paste(label, label2, sep = "_")
 cr_list = split(cr_filtered, label_merged)
-pdf(qq("@{output_dir}/cr_subtype_enriched_to_enhancers_subtype_specific_cr.pdf"), width = 12, height = 16)
-CR_corr_to_enhancer(type = "active", split = ifelse(grepl("neg", names(cr_list)), "neg", "pos"), cluster_rows = FALSE)
-CR_corr_to_enhancer(type = "poised", split = ifelse(grepl("neg", names(cr_list)), "neg", "pos"), cluster_rows = FALSE)
+pdf(qq("@{output_dir}/cr_subtype_enriched_to_enhancers_subtype_specific_cr.pdf"), width = 16, height = 16)
+ht_list = CR_corr_to_enhancer(type = "active", col = col_fun, split = ifelse(grepl("neg", names(cr_list)), "neg", "pos"), cluster_rows = FALSE) +
+          CR_corr_to_enhancer(type = "poised", col = col_fun, split = ifelse(grepl("neg", names(cr_list)), "neg", "pos"), cluster_rows = FALSE)
+ht_list = ht_list + rowAnnotation(number = row_anno_barplot(sapply(cr_list, length), axis = TRUE), width = unit(3, "cm"))
+draw(ht_list)
 dev.off()
 

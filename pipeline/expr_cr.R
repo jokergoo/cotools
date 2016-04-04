@@ -1,8 +1,13 @@
+ 
+suppressPackageStartupMessages(library(GetoptLong))
+
+head = "~/project/development/cotools/pipeline/head/head.R"
+GetoptLong(c("head=s", "head R script"))
 
 source("~/project/development/cotools/script/load_all.R")
-source("~/project/development/cotools/pipeline/head/head.R")
+source(head)
 
-cr_filtered = readRDS("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/rds/cr_filtered_fdr_0.005.rds")
+cr_filtered = readRDS(qq("@{RDS_FOLDER}/cr_filtered_fdr_0.01.rds"))
 
 
 pdf(qq("@{output_dir}/cr_meth_vs_expr_0.005.pdf"), width = 8, height = 8)

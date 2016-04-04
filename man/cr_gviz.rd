@@ -1,10 +1,10 @@
 \name{cr_gviz}
 \alias{cr_gviz}
 \title{
-Gviz plot for a gene model with tracks
+Customized Gviz plot for a gene model
 }
 \description{
-Gviz plot for a gene model with tracks
+Customized Gviz plot for a gene model
 }
 \usage{
 cr_gviz(cr, gi, expr, txdb, gene_start = NULL, gene_end = NULL, tx_list = NULL,
@@ -12,9 +12,10 @@ cr_gviz(cr, gi, expr, txdb, gene_start = NULL, gene_end = NULL, tx_list = NULL,
 }
 \arguments{
 
+  \item{cr}{correlated regions}
   \item{gi}{gene id}
-  \item{expe}{expression matrix}
-  \item{txdb}{transcriptDb object}
+  \item{expr}{expression matrix}
+  \item{txdb}{txDb object}
   \item{gene_start}{start of gene}
   \item{gene_end}{end of the gene}
   \item{tx_list}{a list of tx}
@@ -27,4 +28,5 @@ cr_gviz(cr, gi, expr, txdb, gene_start = NULL, gene_end = NULL, tx_list = NULL,
 \examples{
 # There is no example
 NULL
+
 }

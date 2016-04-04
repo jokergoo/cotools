@@ -1,11 +1,12 @@
 
 # == title
-# Gviz plot for a gene model with tracks
+# Customized Gviz plot for a gene model
 #
 # == param
+# -cr correlated regions
 # -gi gene id
-# -expe expression matrix
-# -txdb transcriptDb object
+# -expr expression matrix
+# -txdb txDb object
 # -gene_start start of gene
 # -gene_end end of the gene
 # -tx_list a list of tx

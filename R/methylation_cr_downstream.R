@@ -20,8 +20,10 @@ cr_qc = function(chromosome = paste0("chr", 1:22), template) {
 	    qqcat("reading @{chr}...\n")
 	    cr = readRDS(qq(template))
 	    
-	    pos_cr = cr[cr$corr > 0]
-	    neg_cr = cr[cr$corr < 0]
+	    l = cr$corr > 0; l[is.na(l)] = FALSE
+	    pos_cr = cr[l]
+	    l = cr$corr < 0; l[is.na(l)] = FALSE
+	    neg_cr = cr[l]
 	    
 	    for(i in seq_along(cutoff)) {
 	    	for(j in seq_along(diameter)) {
@@ -78,8 +80,9 @@ cr_qc = function(chromosome = paste0("chr", 1:22), template) {
 # -cr cr
 # -gf_list gf_list
 # -species species
+# -chromosome chromosomes
 # 
-cr_overlap_to_genomic_features = function(cr, gf_list, species = NULL) {
+cr_overlap_to_genomic_features = function(cr, gf_list, species = NULL, chromosome = paste0("chr", 1:22)) {
 
 	neg_cr = cr[cr$corr < 0]
 	pos_cr = cr[cr$corr > 0]

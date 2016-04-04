@@ -1,26 +1,31 @@
 \name{wgbs_qcplot}
 \alias{wgbs_qcplot}
 \title{
-basic qc plot for methylation
+Basic qc plot for bisulfite sequencing data
 }
 \description{
-basic qc plot for methylation
+Basic qc plot for bisulfite sequencing data
 }
 \usage{
 wgbs_qcplot(sample_id, chromosome = paste0("chr", 1:22))
 }
 \arguments{
 
-  \item{sample_id}{a single sample id}
-  \item{chromosome}{chromosome}
+  \item{sample_id}{a vector of sample ids}
+  \item{chromosome}{a vector of chromosomes}
 
 }
 \details{
-it will produce five plots
+For each sample id, it will produce five plots:
 
-10000 CpG sites are randomly sampled to make the plot
+1. mean/median CpG coverage per chromosome
+2. histogram of CpG coverage
+3. methylation per chromosome 
+4. histogram of methylation
+5. mean Methylation for each CpG coverage
 }
 \examples{
 # There is no example
 NULL
+
 }

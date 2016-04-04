@@ -8,7 +8,7 @@ correlated regions
 }
 \usage{
 correlated_regions(sample_id, expr, txdb, chr, extend = 50000,
-    cov_filter = function(x) sum(x > 0) > length(x)/2,
+    cov_filter = function(x) sum(x > 0, na.rm = TRUE) > length(x)/2,
     cor_method = "spearman", factor = NULL, window_size = 5, max_width = 10000,
     raw_meth = FALSE, cov_cutoff = 3, min_dp = 4, col = NULL)
 }
@@ -36,4 +36,5 @@ based on \code{\link{correlated_regions_per_gene}}
 \examples{
 # There is no example
 NULL
+
 }

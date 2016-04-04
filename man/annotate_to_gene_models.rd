@@ -43,4 +43,5 @@ Following columns are attached to \code{gr}:
 \examples{
 # There is no example
 NULL
+
 }

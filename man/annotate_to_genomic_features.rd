@@ -28,4 +28,5 @@ Note for the annotation strand information is ignored
 \examples{
 # There is no example
 NULL
+
 }

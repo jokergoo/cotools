@@ -28,4 +28,5 @@ Be careful with the \code{strand} in your GRanges object!!
 \examples{
 # There is no example
 NULL
+
 }

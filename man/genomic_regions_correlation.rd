@@ -49,4 +49,5 @@ A list containing:
 \examples{
 # There is no example
 NULL
+
 }

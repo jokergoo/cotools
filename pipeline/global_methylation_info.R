@@ -1,6 +1,11 @@
+ 
+suppressPackageStartupMessages(library(GetoptLong))
+
+head = "~/project/development/cotools/pipeline/head/head.R"
+GetoptLong(c("head=s", "head R script"))
 
 source("~/project/development/cotools/script/load_all.R")
-source("~/project/development/cotools/pipeline/head/head.R")
+source(head)
 
 # chromosome = c("chr21", "chr22")
 
@@ -290,7 +295,7 @@ ind = order(rowVars(mat), decreasing = TRUE)[1:5000]
 ha = HeatmapAnnotation(subtype = SAMPLE$type, age = SAMPLE$age,
   col = list("subtype" = SAMPLE_COLOR, age = AGE_COL_FUN))
 ht = Heatmap(mat[ind, ], name = "methylation", col = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red")), show_row_names = FALSE,
-  top_annotation = ha, split = anno, cluster_columns = TRUE)
+  top_annotation = ha, cluster_columns = TRUE)
 
 pdf(qq("@{output_dir}/methylation_classification_wgbs_top_5k_var.pdf"), width = 14, height = 14)
 draw(ht)
@@ -307,7 +312,7 @@ dev.off()
 ## classify by methylation
 
 
-methylation_subtype_classfication = function(gr, p, corr, k, name) {
+methylation_subtype_classfication = function(gr, p, corr, k) {
   gr_1kb_window = makeWindows(gr, w = 1000, short.keep = TRUE)
   gr_1kb_window = gr_1kb_window[width(gr_1kb_window) > 500]
   gr_list_cgi = get_mean_methylation_in_genomic_features(SAMPLE$id, chromosome = chromosome, gf_list = list(gr_1kb_window = gr_1kb_window))
@@ -331,7 +336,7 @@ methylation_subtype_classfication = function(gr, p, corr, k, name) {
     }
     res = ConsensusClusterPlus(mat2[l, ], maxK = 4, 
       clusterAlg = "km", distance = "euclidean", reps = 1000, verbose = TRUE)
-
+    dev.off()
     list(class = lapply(res[-1], function(x) x$consensusClass), row_index = rownames(mat2))
   }
 
@@ -363,6 +368,7 @@ methylation_subtype_classfication = function(gr, p, corr, k, name) {
 
   m = NULL
   type = NULL
+  age = NULL
   class2 = NULL
   for(i in unique(class)) {
     dend = as.dendrogram(hclust(dist(t(mat[row_index, class == i]))))
@@ -379,18 +385,25 @@ methylation_subtype_classfication = function(gr, p, corr, k, name) {
     top_annotation = ha, split = anno, cluster_columns = FALSE, column_title = qq("@{n} 1kb windows")) + 
     Heatmap(anno, name = "anno", col = c("CGI" = "orange", "Shore" = "green", "Others" = "blue"))
 
-
-  pdf(qq("@{output_dir}/methylation_classification_wgbs_@{name}.pdf"), width = 14, height = 14)
   draw(ht)
   for(an in sapply(ha@anno_list, function(x) x@name)) {
     decorate_annotation(an, {
       grid.text(an, x = unit(-2, "mm"), just = "right")
     })
   }
-  dev.off()
 }
 
+ha = HeatmapAnnotation(subtype = type, age = age, 
+    col = list("subtype" = SAMPLE_COLOR, age = AGE_COL_FUN))
 
-methylation_subtype_classfication(GENOMIC_FEATURE_LIST$cgi, p = 0.2, corr = 0.6, k = 500, name = "cgi")
-methylation_subtype_classfication(setdiff(extended_cgi, GENOMIC_FEATURE_LIST$cgi), p = 0.2, corr = 0.6, k = 500, name = "cgi_shores")
-methylation_subtype_classfication(setdiff(chromGr, extended_cgi), p = 0.02, corr = 0.8, k = 1000, name = "neither_cgi_nor_shores")
+pdf(qq("@{output_dir}/methylation_classification_wgbs_cgi.pdf"), width = 14, height = 14)
+methylation_subtype_classfication(GENOMIC_FEATURE_LIST$cgi, p = 0.2, corr = 0.6, k = 500)
+dev.off()
+
+pdf(qq("@{output_dir}/methylation_classification_wgbs_cgi_shore.pdf"), width = 14, height = 14)
+methylation_subtype_classfication(setdiff(extended_cgi, GENOMIC_FEATURE_LIST$cgi), p = 0.2, corr = 0.6, k = 500)
+dev.of()
+
+pdf(qq("@{output_dir}/methylation_classification_wgbs_neither_cgi_nor_shores.pdf"), width = 14, height = 14)
+methylation_subtype_classfication(setdiff(chromGr, extended_cgi), p = 0.02, corr = 0.8, k = 1000)
+dev.of()

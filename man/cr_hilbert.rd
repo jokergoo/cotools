@@ -21,4 +21,5 @@ cr_hilbert(cr, template, txdb, chromosome = paste0("chr", 1:22), merge_chr = TRU
 \examples{
 # There is no example
 NULL
+
 }

@@ -22,4 +22,5 @@ compare_meth(cr, chr, start, end, x = NULL, x2 = NULL)
 \examples{
 # There is no example
 NULL
+
 }

@@ -12,7 +12,7 @@ plot_coverage_and_methylation_on_genome(sid, chromosome = paste0("chr", 1:22),
 }
 \arguments{
 
-  \item{sid}{sample id}
+  \item{sid}{a single sample id}
   \item{chromosome}{chromosome}
   \item{species}{species}
   \item{nw}{number of windows}
@@ -20,9 +20,11 @@ plot_coverage_and_methylation_on_genome(sid, chromosome = paste0("chr", 1:22),
 
 }
 \details{
-There will be a track for methylation and one track for coverage.
+The whole genome is segented by \code{nw} windows and mean methylation and mean CpG coverage
+are visualized as two tracks.
 }
 \examples{
 # There is no example
 NULL
+
 }

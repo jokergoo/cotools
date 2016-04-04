@@ -21,4 +21,5 @@ chromatin_states_transition_chord_diagram(mat, max_mat = mat, cate1, cate2, ...)
 \examples{
 # There is no example
 NULL
+
 }

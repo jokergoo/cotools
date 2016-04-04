@@ -1,7 +1,12 @@
-source("~/project/development/cotools/script/load_all.R")
-source("~/project/development/cotools/pipeline/head/head.R")
+ 
+suppressPackageStartupMessages(library(GetoptLong))
 
-# chromosome = c("chr21", "chr22")
+head = "~/project/development/cotools/pipeline/head/head.R"
+GetoptLong(c("head=s", "head R script"))
+
+source("~/project/development/cotools/script/load_all.R")
+source(head)
+
 
 #setwd(output_dir)
 
@@ -33,8 +38,10 @@ ind = order(cv, decreasing = TRUE)[1:2000]
 
 mat = expr[ind, ]
 set.seed(123)
+pdf(NULL)
 res = ConsensusClusterPlus(mat, maxK = 6, 
     clusterAlg = "hc", distance = "spearman", reps = 1000, verbose = TRUE)
+dev.off()
 
 class = res[[4]]$consensusClass
 pdf(qq("@{output_dir}/expression_classification_rnaseq.pdf"), width = 10, height = 10)
@@ -45,4 +52,6 @@ ht = Heatmap(mat, col = colorRamp2(quantile(mat, c(0, 0.5, 0.9)), c("blue", "whi
   Heatmap(gt[rownames(mat)], col = c("protein_coding" = "red", "others" = "grey"), 
     show_row_names = FALSE, name = "type")
 draw(ht)
+decorate_annotation("subtype", {grid.text("subtype", unit(2, "mm") + unit(1, "npc"), just = "left")})
+decorate_annotation("age", {grid.text("age", unit(2, "mm") + unit(1, "npc"), just = "left")})
 dev.off()

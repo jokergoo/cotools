@@ -165,7 +165,16 @@ set_proper_seqlengths = function(gr, species) {
 	return(gr)
 }
 
-
+# == title
+# pair-wise correlation of rows in a huge matrix
+#
+# == param
+# -x a matrix
+# -abs_cutoff cutoff of absolute correlation
+# -size size of blocks
+# -mc multiple cores
+# -... pass to `stats::cor`
+#
 cor_cols = function (x, abs_cutoff = 0.5, size = 1000, mc = 1, ...) {
     
     split_by_block = function(n, size) {
@@ -220,4 +229,117 @@ cor_cols = function (x, abs_cutoff = 0.5, size = 1000, mc = 1, ...) {
 	rownames(count) = colnames(x)
 	colnames(count) = abs_cutoff
 	return(count)
+}
+
+
+genes = function(..., max_try = 100, sleep = 60) {
+	n_try = 0
+	while(n_try <= max_try) {
+		oe = try(res <- GenomicFeatures::genes(...))
+		if(inherits(oe, "try-error")) {
+			Sys.sleep(sleep)
+			n_try = n_try + 1
+		} else {
+			return(res)
+		}
+	}
+}
+
+transcripts = function(..., max_try = 100, sleep = 60) {
+	n_try = 0
+	while(n_try <= max_try) {
+		oe = try(res <- GenomicFeatures::transcripts(...))
+		if(inherits(oe, "try-error")) {
+			Sys.sleep(sleep)
+			n_try = n_try + 1
+		} else {
+			return(res)
+		}
+	}
+}
+
+exons = function(..., max_try = 100, sleep = 60) {
+	n_try = 0
+	while(n_try <= max_try) {
+		oe = try(res <- GenomicFeatures::exons(...))
+		if(inherits(oe, "try-error")) {
+			Sys.sleep(sleep)
+			n_try = n_try + 1
+		} else {
+			return(res)
+		}
+	}
+}
+
+intronsByTranscript = function(..., max_try = 100, sleep = 60) {
+	n_try = 0
+	while(n_try <= max_try) {
+		oe = try(res <- GenomicFeatures::intronsByTranscript(...))
+		if(inherits(oe, "try-error")) {
+			Sys.sleep(sleep)
+			n_try = n_try + 1
+		} else {
+			return(res)
+		}
+	}
+}
+fiveUTRsByTranscript = function(..., max_try = 100, sleep = 60) {
+	n_try = 0
+	while(n_try <= max_try) {
+		oe = try(res <- GenomicFeatures::fiveUTRsByTranscript(...))
+		if(inherits(oe, "try-error")) {
+			Sys.sleep(sleep)
+			n_try = n_try + 1
+		} else {
+			return(res)
+		}
+	}
+}
+threeUTRsByTranscript = function(..., max_try = 100, sleep = 60) {
+	n_try = 0
+	while(n_try <= max_try) {
+		oe = try(res <- GenomicFeatures::threeUTRsByTranscript(...))
+		if(inherits(oe, "try-error")) {
+			Sys.sleep(sleep)
+			n_try = n_try + 1
+		} else {
+			return(res)
+		}
+	}
+}
+disjointExons = function(..., max_try = 100, sleep = 60) {
+	n_try = 0
+	while(n_try <= max_try) {
+		oe = try(res <- GenomicFeatures::disjointExons(...))
+		if(inherits(oe, "try-error")) {
+			Sys.sleep(sleep)
+			n_try = n_try + 1
+		} else {
+			return(res)
+		}
+	}
+}
+transcriptsBy = function(..., max_try = 100, sleep = 60) {
+	n_try = 0
+	while(n_try <= max_try) {
+		oe = try(res <- GenomicFeatures::transcriptsBy(...))
+		if(inherits(oe, "try-error")) {
+			Sys.sleep(sleep)
+			n_try = n_try + 1
+		} else {
+			return(res)
+		}
+	}
+}
+GeneRegionTrack = function(..., max_try = 100, sleep = 60) {
+	n_try = 0
+	while(n_try <= max_try) {
+		oe = try(res <- Gviz::GeneRegionTrack(...))
+		if(inherits(oe, "try-error")) {
+			Sys.sleep(sleep)
+			n_try = n_try + 1
+		} else {
+			return(res)
+		}
+	}
 }

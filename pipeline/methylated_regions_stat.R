@@ -1,9 +1,11 @@
  
+suppressPackageStartupMessages(library(GetoptLong))
+
+head = "~/project/development/cotools/pipeline/head/head.R"
+GetoptLong(c("head=s", "head R script"))
+
 source("~/project/development/cotools/script/load_all.R")
-source("~/project/development/cotools/pipeline/head/head.R")
-
-
-expr = log2(expr + 1)
+source(head)
 
 MR_stat = function(MR_list, name) {
   MR_list = lapply(MR_list[SAMPLE$id], function(gr) {
@@ -31,7 +33,7 @@ MR_corr = function(MR_list, name) {
     gr[seqnames(gr) %in% paste0("chr", 1:22)]
   })
 
-  res = genomic_regions_correlation(MR_list, GENOMIC_FEATURE_LIST, chromosome = chromosome, nperm = 2)
+  res = genomic_regions_correlation(MR_list, GENOMIC_FEATURE_LIST, chromosome = chromosome, nperm = 0)
   pdf(qq("@{output_dir}/@{name}_correlation.pdf"), width = 10, height = 5)
   ha = HeatmapAnnotation(subtype = SAMPLE$type, age = SAMPLE$age, col = list(subtype = SAMPLE_COLOR, age = AGE_COL_FUN))
   # ht = Heatmap(res$foldChange, top_annotation = ha, column_title = qq("@{name}, fold change, stat: jaccard coefficient"))
@@ -76,7 +78,7 @@ ha = HeatmapAnnotation(barplot = function(index) {
 annotation_height = unit(c(9, 0.5), "cm"),
 show_legend = FALSE)
 
-mat = matrix(nrow = 0, ncol = length(DMV_genes))
+mat = matrix(nrow = 0, ncol = length(SAMPLE$id))
 colnames(mat) = SAMPLE$id
 ht = Heatmap(mat, top_annotation = ha, column_title = "Percent of LMR/UMR that overlap with CGI")
 cm = ColorMapping(level = names(SAMPLE_COLOR), color = SAMPLE_COLOR)

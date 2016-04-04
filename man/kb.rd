@@ -17,4 +17,5 @@ kb(x)
 \examples{
 # There is no example
 NULL
+
 }

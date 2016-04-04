@@ -126,6 +126,7 @@ enriched_heatmap_list_on_gene = function(cr, cgi, txdb, expr, hm_list = NULL, hm
 		target_ratio = 0.1
 		axis_name = c("-5KB", "TSS", "5KB")
 	} else {
+		if(by != "gene") stop("'by' should be 'gene' if 'on' is not 'tss'.")
 		qqcat("extracting gene body\n")
 		gene = gene[names(gene) %in% cr$gene_id]
 
@@ -138,7 +139,7 @@ enriched_heatmap_list_on_gene = function(cr, cgi, txdb, expr, hm_list = NULL, hm
 	target = sort(target)
 
 	mat = normalizeToMatrix(cr, target, mapping_column = mapping_column,
-	        extend = 5000, mean_mode = "absolute", w = 50, target_ratio = target_ratio)
+	        extend = 5000, mean_mode = "absolute", w = 50, target_ratio = target_ratio, trim = 0)
 
 	l = rowSums(mat) > 0
 	mat = mat[l, ]
@@ -147,38 +148,40 @@ enriched_heatmap_list_on_gene = function(cr, cgi, txdb, expr, hm_list = NULL, hm
 	mat_cgi = normalizeToMatrix(cgi, target,
 	        extend = 5000, mean_mode = "absolute", w = 50, target_ratio = target_ratio)
 
-	if(!missing(hm_list)) {
+	meth_mat_list = enrich_with_methylation(target, sample_id, factor, target_ratio = target_ratio)
+
+	if(length(hm_list) > 0) {
 		lt = enrich_with_histone_mark(target, hm_list, sample_id, factor, return_arr = TRUE, target_ratio = target_ratio)
 		sample = names(hm_list)
 		arr = lt[[1]]
-		# detect regions that histone marks correlate to expression
-		expr2 = expr[target$gene_id, intersect(colnames(expr), sample)]
-		cor_mat = matrix(nr = nrow(expr2), nc = ncol(mat))
-		cor_p_mat = cor_mat
+		if(length(hm_list) >= 5) {
+			# detect regions that histone marks correlate to expression
+			expr2 = expr[target$gene_id, intersect(colnames(expr), sample)]
+			cor_mat = matrix(nr = nrow(expr2), nc = ncol(mat))
+			cor_p_mat = cor_mat
 
-		counter = set_counter(nrow(cor_mat))
-		for(i in seq_len(nrow(cor_mat))) {
-			counter()
-		    for(j in seq_len(ncol(cor_mat))) {
-		        x = cor(arr[i, j, ], expr2[i, ], method = "spearman")
-		        cor_mat[i, j] = x
-		        cor_p_mat[i, j] = cor.test(arr[i, j, ], expr2[i, ], method = "spearman")$p.value
-		    }
+			counter = set_counter(nrow(cor_mat))
+			for(i in seq_len(nrow(cor_mat))) {
+				counter()
+			    for(j in seq_len(ncol(cor_mat))) {
+			        x = cor(arr[i, j, ], expr2[i, ], method = "spearman")
+			        cor_mat[i, j] = x
+			        cor_p_mat[i, j] = cor.test(arr[i, j, ], expr2[i, ], method = "spearman")$p.value
+			    }
+			}
+			cat("\n")
+			cor_mat[is.na(cor_mat)] = 0
+			cor_p_mat = p.adjust(cor_p_mat, method = "BH")
+			l1 = cor_p_mat < hm_cor_p_cutoff & cor_mat > 0
+			cor_mat[l1] = 1
+			l2 = cor_p_mat < hm_cor_p_cutoff & cor_mat < 0
+			cor_mat[l2] = -1 
+			cor_mat[!(l1 | l2)] = 0
+			cor_mat = copyAttr(mat, cor_mat)
 		}
-		cat("\n")
-		cor_mat[is.na(cor_mat)] = 0
-		cor_p_mat = p.adjust(cor_p_mat, method = "BH")
-		l1 = cor_p_mat < hm_cor_p_cutoff & cor_mat > 0
-		cor_mat[l1] = 1
-		l2 = cor_p_mat < hm_cor_p_cutoff & cor_mat < 0
-		cor_mat[l2] = -1 
-		cor_mat[!(l1 | l2)] = 0
-		cor_mat = copyAttr(mat, cor_mat)
+
+		hist_mat_list = lt[[2]]
 	}
-
-	hist_mat_list = lt[[2]]
-
-	meth_mat_list = enrich_with_methylation(target, sample_id, factor, target_ratio = target_ratio)
 
 	base_expr = rowMeans(expr[target$gene_id, , drop = FALSE])
 	base_expr_label = ifelse(base_expr > mean(base_expr, trim = 0.1), "high", "low")
@@ -207,9 +210,9 @@ enriched_heatmap_list_on_gene = function(cr, cgi, txdb, expr, hm_list = NULL, hm
 	              top_annotation = HeatmapAnnotation(lines1 = anno_enriched(gp = gpar(col = cr_col))), 
 	              top_annotation_height = unit(2, "cm"), column_title = "meth <> expr", axis_name = axis_name)
 	gap = unit(1, "cm")
-	if(!is.null(hm_list)) {
+	if(length(hm_list) >= 5) {
 	    ht_list = ht_list + EnrichedHeatmap(cor_mat, col = colorRamp2(c(-1, 0, 1), c("darkgreen", "white", "red")), name = qq("@{hm_name}"), 
-	          	column_title = qq("@{hm_name} <> expr"))
+	          	column_title = qq("@{hm_name} <> expr\n@{length(hm_list)} samples"))
 	    gap = unit.c(gap, unit(3, "mm"))
 	}
 
@@ -230,15 +233,17 @@ enriched_heatmap_list_on_gene = function(cr, cgi, txdb, expr, hm_list = NULL, hm
 	ht_list = ht_list + Heatmap(base_expr, name = "base_e", width = unit(5, "mm"), show_row_names = FALSE)
 	gap = unit.c(gap, unit(3, "mm"))
 
-	if(!is.null(hm_list)) {
+	if(length(hm_list) > 0) {
 		ymin = min(sapply(hist_mat_list, function(mat) min(colMeans(mat, na.rm = TRUE))), na.rm = TRUE)
 		ymax = max(sapply(hist_mat_list, function(mat) max(colMeans(mat, na.rm = TRUE))), na.rm = TRUE)
-		for(type in names(hist_mat_list)) {
-			ht_list = ht_list + EnrichedHeatmap(hist_mat_list[[type]], col = c("white", "purple"), name = qq("hist_@{type}"),
-				column_title = qq("@{hm_name}_@{type}"), axis_name = axis_name, show_heatmap_legend = type == names(hist_mat_list)[1],
-				heatmap_legend_param = list(title = "hm_density"),
-				top_annotation = HeatmapAnnotation(lines1 = anno_enriched(ylim = c(ymin, ymax), gp = gpar(col = "purple"))))
-			gap = unit.c(gap, unit(1, "cm"))
+		if(ymax > ymin) {
+			for(type in names(hist_mat_list)) {
+				ht_list = ht_list + EnrichedHeatmap(hist_mat_list[[type]], col = c("white", "purple"), name = qq("hist_@{type}"),
+					column_title = qq("@{hm_name}_@{type}"), axis_name = axis_name, show_heatmap_legend = type == names(hist_mat_list)[1],
+					heatmap_legend_param = list(title = "hm_density"),
+					top_annotation = HeatmapAnnotation(lines1 = anno_enriched(ylim = c(ymin, ymax), gp = gpar(col = "purple"))))
+				gap = unit.c(gap, unit(1, "cm"))
+			}
 		}
 	}
 	for(type in names(meth_mat_list)) {
@@ -324,12 +329,15 @@ enriched_heatmap_list_on_tss_cgi = function(cr, cgi, txdb, expr, hm_list = NULL,
 
 	cgi_extend = cgi; start(cgi_extend) = start(cgi) - 5000; end(cgi_extend) = end(cgi) + 5000
 	mtch = as.matrix(findOverlaps(cr, cgi_extend))
+	# cgi gene should be the same as cr gene
+	l = cr[mtch[, 1]]$gene_id == cgi_extend[mtch[,2]]$nearest_expressed_tss
+	mtch = mtch[l, , drop = FALSE]
 	cgi2 = cgi[unique(mtch[, 2])]
 	cgi_extend = cgi_extend[unique(mtch[, 2])]
 
 	qqcat("There are @{length(cgi2)} CGIs that exists within TSS +- 5kb\n")
 
-	mat3 = normalizeToMatrix(cr[unique(mtch[, 1])], cgi2, extend = 5000, w = 50)
+	mat3 = normalizeToMatrix(cr[unique(mtch[, 1])], cgi2, extend = 5000, w = 50, trim = 0)
 	l = rowSums(mat3) > 0
 	mat3 = mat3[l, ]
 	cgi2 = cgi2[l]
@@ -365,15 +373,17 @@ enriched_heatmap_list_on_tss_cgi = function(cr, cgi, txdb, expr, hm_list = NULL,
 	            rowAnnotation(nearby_n_tss = row_anno_barplot(n_tss, axis = TRUE), width = unit(1, "cm"))
 
 
-	if(!is.null(hm_list)) {
+	if(length(hm_list) > 0) {
 		hist_mat_list = enrich_with_histone_mark(cgi2, hm_list, sample_id, factor)
 		ymin = min(sapply(hist_mat_list, function(mat) min(colMeans(mat, na.rm = TRUE))))
 		ymax = max(sapply(hist_mat_list, function(mat) max(colMeans(mat, na.rm = TRUE))))
-		for(type in names(hist_mat_list)) {
-			ht_list = ht_list + EnrichedHeatmap(hist_mat_list[[type]], col = c("white", "purple"), name = qq("hist_@{type}"),
-				column_title = type, axis_name = c("-5kb", "start", "end", "5kb"), show_heatmap_legend = type == names(hist_mat_list)[1],
-				heatmap_legend_param = list(title = "hm_density"),
-				top_annotation = HeatmapAnnotation(lines1 = anno_enriched(gp = gpar(col = "purple"))))
+		if(ymax > ymin) {
+			for(type in names(hist_mat_list)) {
+				ht_list = ht_list + EnrichedHeatmap(hist_mat_list[[type]], col = c("white", "purple"), name = qq("hist_@{type}"),
+					column_title = type, axis_name = c("-5kb", "start", "end", "5kb"), show_heatmap_legend = type == names(hist_mat_list)[1],
+					heatmap_legend_param = list(title = "hm_density"),
+					top_annotation = HeatmapAnnotation(lines1 = anno_enriched(ylim = c(ymin, ymax), gp = gpar(col = "purple"))))
+			}
 		}
 	}
 
@@ -395,6 +405,79 @@ enriched_heatmap_list_on_tss_cgi = function(cr, cgi, txdb, expr, hm_list = NULL,
 	})
 }
 
+# == title
+# Enriched heatmap on a certain gf
+#
+# == param
+# -cr cr
+# -gf genomic features
+# -hm_list hm_list
+# -hm_name hm_name
+# -... pass to
+#
+enriched_heatmap_list_on_genomic_features = function(cr, gf, hm_list = NULL, hm_name = NULL, ...) {
+
+	sample_id = attr(cr, "sample_id")
+	factor = attr(cr, "factor")
+	if(is.null(factor)) factor = rep("foo", length(sample_id))
+
+	gf_extend = gf; start(gf_extend) = start(gf) - 5000; end(gf_extend) = end(gf) + 5000
+	mtch = as.matrix(findOverlaps(cr, gf_extend))
+
+	gf2 = gf[unique(mtch[, 2])]
+	
+	mat3 = normalizeToMatrix(cr[unique(mtch[, 1])], gf2, extend = 5000, w = 50, trim = 0)
+	l = rowSums(mat3) > 0
+	mat3 = mat3[l, ]
+	gf2 = gf2[l]
+
+	qqcat("There are @{length(gf2)} gfs that exists\n")
+
+	if(all(cr$corr > 0)) {
+		cr_col = "red"
+		cr_name = "pos_cr"
+	} else if(all(cr$corr < 0)) {
+		cr_col = "darkgreen"
+		cr_name = "neg_cr"
+	} else {
+		cr_col = "blue"
+		cr_name = "cr"
+	}
+
+	gf_width = width(gf2[l])
+	gf_width[gf_width > quantile(gf_width, 0.99)] = quantile(gf_width, 0.99)
+
+	ht_list = EnrichedHeatmap(mat3, col = c("white", cr_col), cluster_rows = TRUE, show_row_dend = FALSE,
+	                top_annotation = HeatmapAnnotation(lines1 = anno_enriched()), 
+	                top_annotation_height = unit(2, "cm"), column_title = qq("@{cr_name} ~ gf"), axis_name = c("-5kb", "start", "end", "5kb"))
+
+
+	if(length(hm_list) > 0) {
+		hist_mat_list = enrich_with_histone_mark(gf2, hm_list, sample_id, factor)
+		ymin = min(sapply(hist_mat_list, function(mat) min(colMeans(mat, na.rm = TRUE))))
+		ymax = max(sapply(hist_mat_list, function(mat) max(colMeans(mat, na.rm = TRUE))))
+		if(ymax > ylim) {
+			for(type in names(hist_mat_list)) {
+				ht_list = ht_list + EnrichedHeatmap(hist_mat_list[[type]], col = c("white", "purple"), name = qq("hist_@{type}"),
+					column_title = type, axis_name = c("-5kb", "start", "end", "5kb"), show_heatmap_legend = type == names(hist_mat_list)[1],
+					heatmap_legend_param = list(title = "hm_density"),
+					top_annotation = HeatmapAnnotation(lines1 = anno_enriched(ylim = c(ymin, ymax), gp = gpar(col = "purple"))))
+			}
+		}
+	}
+
+	meth_mat_list = enrich_with_methylation(gf2, sample_id, factor)
+	for(type in names(meth_mat_list)) {
+		ymin = min(sapply(meth_mat_list, function(mat) min(colMeans(mat, na.rm = TRUE))))
+		ymax = max(sapply(meth_mat_list, function(mat) max(colMeans(mat, na.rm = TRUE))))
+		ht_list = ht_list + EnrichedHeatmap(meth_mat_list[[type]], col = colorRamp2(c(0, 0.5, 1), c("blue", "white", "red")), 
+			name = qq("meth_@{type}"), column_title = type, axis_name = c("-5kb", "start", "end", "5kb"), show_heatmap_legend = type == names(meth_mat_list)[1],
+				heatmap_legend_param = list(title = "methylation"),
+				top_annotation = HeatmapAnnotation(lines1 = anno_enriched(ylim = c(ymin, ymax), gp = gpar(col = "red"))))
+	}
+	draw(ht_list, heatmap_legend_side = "bottom", ...)
+}
+
 
 enrich_with_histone_mark = function(target, hm_list, sample_id, factor, target_ratio = 0.1, return_arr = FALSE, 
 	value_column = "density", extend = 5000, mean_mode = "w0", w = 50, ...) {
@@ -409,7 +492,7 @@ enrich_with_histone_mark = function(target, hm_list, sample_id, factor, target_r
 	for(i in seq_along(sample)) {
 		qqcat("@{sample[i]}: normalize histone modifications to @{target_name}.\n")
 	    tm = normalizeToMatrix(hm_list[[i]], target, target_ratio = target_ratio, 
-	    	value_column = value_column, extend = extend, mean_mode = mean_mode, w = w, ...)
+	    	value_column = value_column, extend = extend, mean_mode = mean_mode, w = w, trim = c(0, 0.01), ...)
 	    if(!flag) {
 	    	arr = array(dim = c(length(target), dim(tm)[2], length(hm_list)))
 	    	flag = 1
@@ -421,8 +504,12 @@ enrich_with_histone_mark = function(target, hm_list, sample_id, factor, target_r
 	hist_mat_list = list()
 	for(type in unique(factor)) {
 	    l = sample %in% sample_id[factor == type]
-	    hist_mat_list[[type]] = apply(arr[, , l,drop = FALSE], c(1, 2), mean, na.rm = TRUE)
-	    hist_mat_list[[type]] = copyAttr(tm, hist_mat_list[[type]])
+	    if(sum(l) == 0) {
+	    	hist_mat_list[[type]] = NULL
+	    } else {
+	    	hist_mat_list[[type]] = apply(arr[, , l,drop = FALSE], c(1, 2), mean, na.rm = TRUE)
+	    	hist_mat_list[[type]] = copyAttr(tm, hist_mat_list[[type]])
+	    }
 	}
 
 	if(return_arr) {
@@ -439,7 +526,7 @@ enrich_with_methylation = function(target, sample_id, factor, target_ratio = 0.1
 	target_extend = GRanges(seqnames = seqnames(target), ranges = IRanges(start(target)-extend, end(target)+extend))
 	# process raw methylation data
 	meth_gr = GRanges()
-	for(chr in sort(as.vector(unique(seqnames(target))))) {
+	for(chr in sort(unique(as.vector(seqnames(target))))) {
 	    cat(chr, "\n")
 	    methylation_hooks$set(chr)
 	    gr = methylation_hooks$GRanges()

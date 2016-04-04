@@ -1,14 +1,17 @@
 
 # == title
-# scatter plot between methylation and expression
+# Scatter plot between methylation and expression
 #
 # == param
 # -cr correlated regions from `correlated_regions`
-# -expr expression
+# -expr expression matrix which was used to detect ``cr``
 # -gi gene id
-# -text_column
-# -xlab xlab
-# -ylab ylab
+# -text_column which column in ``cr`` should be put as annotation text in the plot
+# -xlab xlab in the plot
+# -ylab ylab in the plot
+#
+# == details
+# Scatterplot for all CRs corresponding to the gene will be made.
 #
 cr_scatterplot_me = function(cr, expr, gi = NULL, text_column = NULL,
 	xlab = "Methylation", ylab = "Expression") {
@@ -47,12 +50,12 @@ cr_scatterplot_me = function(cr, expr, gi = NULL, text_column = NULL,
 }
 
 # == title
-# scatterplot with boxplot
+# scatterplot with boxplots on both sides
 #
 # == param
 # -x x
 # -y y
-# -annotation annotation
+# -annotation annotations
 # -annotation_color colors for annotation
 # -main title for the plot
 # -xlab xlab

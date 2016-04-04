@@ -19,4 +19,5 @@ reduce2(gr, max_gap = 1000, gap = bp(1000))
 \examples{
 # There is no example
 NULL
+
 }

@@ -25,4 +25,5 @@ pos_CR and neg_CR are reduced separatedly
 \examples{
 # There is no example
 NULL
+
 }

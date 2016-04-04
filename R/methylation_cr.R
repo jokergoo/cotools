@@ -52,6 +52,10 @@ correlated_regions_per_gene = function(site, meth, cov, expr, chr, cov_cutoff = 
 	}))
 
 	if(!is.null(factor)) {
+		if(length(unique(factor)) == 1) factor = NULL
+	}
+
+	if(!is.null(factor)) {
 		factor = as.vector(factor)
 		meth_anova = apply(m, 1, function(x) {
 			l = !is.na(x)
@@ -115,7 +119,7 @@ correlated_regions_per_gene = function(site, meth, cov, expr, chr, cov_cutoff = 
 # == detail
 # based on `correlated_regions_per_gene`
 correlated_regions = function(sample_id, expr, txdb, chr, extend = 50000,
-	cov_filter = function(x) sum(x > 0) > length(x)/2,
+	cov_filter = function(x) sum(x > 0, na.rm = TRUE) > length(x)/2,
 	cor_method = "spearman", factor = NULL, window_size = 5, max_width = 10000,
 	raw_meth = FALSE, cov_cutoff = 3, min_dp = 4, col = NULL) {
 
@@ -153,6 +157,9 @@ correlated_regions = function(sample_id, expr, txdb, chr, extend = 50000,
 	if(!is.null(cov_filter)) {
 		
 		l = apply(cov, 1, cov_filter)
+		if(any(is.na(l))) {
+			stop("`cov_filter` generates `NA`, check it.")
+		}
 		site = site[l]
 		meth = meth[l, , drop = FALSE]
 		cov = cov[l, , drop = FALSE]
@@ -330,7 +337,9 @@ filter_correlated_regions = function(chromosome = paste0("chr", 1:22), template,
 		if(has_anova) {
 			cr$meth_anova_fdr = anova_fdr[lo]
 		}
-		cr2 = suppressWarnings(c(cr2, cr[l[lo]]))
+		if(sum(l[lo])) {
+			cr2 = suppressWarnings(c(cr2, cr[l[lo]]))
+		}
 	}
 
 	attr(cr2, "factor") = attr(cr, "factor")
@@ -348,7 +357,8 @@ filter_correlated_regions = function(chromosome = paste0("chr", 1:22), template,
 	cr2
 }
 
-
+# == title
+# plot that helps to choose a gap
 reduce_cr_gap_test = function(cr) {
 	neg_cr = cr[cr$corr < 0]
 	neg_cr_list = split(as.data.frame(neg_cr), neg_cr$gene_id)
@@ -490,8 +500,9 @@ reduce_cr = function(cr, expr, txdb, max_gap = 1000, gap = 1.0, mc.cores = 1) {
 add_subtype_specificity = function(cr, cutoff = 0.05, suffix = "_ss") {
 	
 	factor = attr(cr, "factor")
-	if(is.null(factor)) {
-		stop("no grouping settings.")
+	if(length(unique(factor)) <= 1) {
+		warning("no grouping settings.")
+		return(cr)
 	}
 
 	level = unique(factor)

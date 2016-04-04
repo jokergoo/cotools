@@ -37,4 +37,5 @@ A data frame which contains statistics for each chromosome in each sample.
 \examples{
 # There is no example
 NULL
+
 }

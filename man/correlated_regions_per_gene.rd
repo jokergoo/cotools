@@ -28,4 +28,5 @@ correlated_regions_per_gene(site, meth, cov, expr, chr, cov_cutoff = 3, min_dp =
 \examples{
 # There is no example
 NULL
+
 }

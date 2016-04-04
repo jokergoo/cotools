@@ -18,4 +18,5 @@ print bp class objects
 \examples{
 # There is no example
 NULL
+
 }

@@ -25,4 +25,5 @@ the second column is the index of end sites
 \examples{
 # There is no example
 NULL
+
 }

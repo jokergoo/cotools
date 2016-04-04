@@ -1,6 +1,5 @@
 
-# universal
-# 'normal' is a hard coded type
+###################### samle settings ####################
 sample_text = 
 "id   type   age
 AK015    IDH  28
@@ -66,8 +65,8 @@ names(SAMPLE_COLOR) = c("IDH", "MES", "RTK_I", "RTK_II")
 
 AGE_COL_FUN = colorRamp2(c(20, 70), c("black", "white"))
 
-############################################################
-#
+###################### how to read methylation data ####################
+
 methylation_hooks$set = function(chr) {
 
     if(!is.null(methylation_hooks$obj)) {
@@ -145,17 +144,27 @@ methylation_hooks$coverage = function(bs_fit = methylation_hooks$obj,
 }
 
 
-##############
+###################### transcriptome ##############################
+
 gencode_gtf_file = "/icgc/dkfzlsdf/analysis/B080/guz/gencode/gencode.v19.annotation.gtf"
 
 if(!exists("expression", envir = .GlobalEnv, inherits = FALSE)) {
     cat("load expression...\n")
     load("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/data/hipo_016_rnaseq_gencode19expression.RData")
 }
-if(!exists("txdb", envir = .GlobalEnv, inherits = FALSE)) {
-    cat("load txdb...\n")
-    txdb = loadDb("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/data/gencode.v19.sqlite")
+
+TEMP_DIR = "/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/temp"
+dir.create(TEMP_DIR, showWarnings = FALSE)
+temp_file = tempfile(tmpdir = TEMP_DIR, fileext = ".sqlite")
+file.copy("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/data/gencode.v19.sqlite", temp_file)
+
+qqcat("load txdb @{temp_file}...\n")
+txdb = loadDb(temp_file)
+
+.Last = function() {
+    file.remove(temp_file)
 }
+
 
 gt = extract_field_from_gencode(gencode_gtf_file, level = "gene", primary_key = "gene_id", field = "gene_type")
 gt = gt[gt == "protein_coding"]
@@ -178,9 +187,12 @@ expr = expr[chr[rownames(expr)] %in% chromosome, ]
 genome = "hg19"
 
 output_dir = "/home/guz/project/analysis/hipo16_new/figure_prepare/"
+RDS_FOLDER = "/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/results/rds"
 
 dir.create(output_dir, showWarnings = FALSE)
 dir.create(paste0(output_dir, "/gviz"), showWarnings = FALSE)
+
+################### genomic annotaitons #######################
 
 if(!exists("GENOMIC_FEATURE_LIST", envir = .GlobalEnv)) {
     # annotate to other regions
@@ -193,7 +205,7 @@ if(!exists("GENOMIC_FEATURE_LIST", envir = .GlobalEnv)) {
         cgi                    = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/cpgIslandExt.bed"),
         cgi_shore              = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/cgi_shore_2k.bed"),
         dnase                  = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/dnase.bed"),
-        enhancer               = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/enhancer.bed"),
+        enhancer               = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/encode_strong_enhancer_gap_1kb.bed"),
         repeats_LINE           = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/repeats_LINE.bed"),
         repeats_SINE           = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/repeats_SINE.bed"),
         tfbs                   = qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/analysis/WGBS_final/bed/encode_uniform_tfbs_merged_1kb.bed")        # too large for memory
@@ -210,6 +222,8 @@ if(!exists("GENOMIC_FEATURE_LIST", envir = .GlobalEnv)) {
     })
 }
 
+######################### how to read histome modification data #########################
+
 get_hm_sample = function(hm) {
     hm_sample = dir("/icgc/dkfzlsdf/analysis/hipo/hipo_016/chipseq_gbm/", pattern = qq("AK.*@{hm}"))
     sample_id = gsub(qq("_@{hm}"), "", hm_sample)
@@ -218,8 +232,21 @@ get_hm_sample = function(hm) {
 
 get_hm = function(sid, histone_mark) {
     df = read.table(qq("/icgc/dkfzlsdf/analysis/hipo/hipo_016/chipseq_gbm/@{sid}_@{histone_mark}/sicer/@{sid}_@{histone_mark}.mkdup-W200-G200-islands-summary-FDR0.01"), stringsAsFactors = FALSE)
-    df = df[df[[1]] %in% chromosome]
+    df = df[df[[1]] %in% chromosome, ]
     gr = GRanges(seqnames = df[[1]], ranges = IRanges(df[[2]], df[[3]]), density = df[[7]])
+}
+
+get_hm_list = function(histone_mark) {
+    sample = get_hm_sample(histone_mark)
+
+    hm_list = list()
+    for(i in seq_along(sample)) {
+        cat(sample[i], "\n")
+        gr = get_hm(sample[i], histone_mark)
+        hm_list[[i]] = gr
+    }
+    names(hm_list) = sample
+    return(hm_list)
 }
 
 # cp = initialize_project(

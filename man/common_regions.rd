@@ -28,4 +28,5 @@ are percent of the common region which is covered by regions in every sample.
 \examples{
 # There is no example
 NULL
+
 }
